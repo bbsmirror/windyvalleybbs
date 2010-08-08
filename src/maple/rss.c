@@ -8,9 +8,9 @@
 /* modify: cache.bbs@bbs.ee.ncku.edu.tw                  */
 /*-------------------------------------------------------*/
 
-/* 
- * 090617. 修正輸出的函式和色碼 
- * 090624. 修正提示訊息 
+/*
+ * 090617. 修正輸出的函式和色碼
+ * 090624. 修正提示訊息
  *
  */
 
@@ -119,6 +119,9 @@ static void rss_brdlist_update(rssfeed_t *, rssfeed_t *);
 static void rss_feedlist_update(rssfeed_t *, rssfeed_t *);
 
 static void rss_item(int, rssfeed_t *);
+
+static void blist_add();
+static void blist_del();
 
 
 static void rss_brdlist_del(rssfeed_t *feed)
@@ -330,6 +333,9 @@ if (rec_get(xo->dir, &check, sizeof(rssfeed_t), i) >= 0 &&
     vmsg("錯誤：已有相同網址");
     return XO_LOAD;
 }
+
+if ( size == 0)
+   blist_add(); // 新增第一筆資料時紀錄到brdlist.list
 
     feed.chrono = time(NULL);
     str_stamp(feed.date, &feed.chrono);
@@ -629,7 +635,7 @@ rss_brdlist_update(feed, &mfeed);
 }
 
 /*------------------------------------------------------ */
-/*轉信設定                                               */ 
+/*轉信設定                                               */
 /*------------------------------------------------------ */
 
 static int rss_outgo(XO *xo)
@@ -657,8 +663,8 @@ rss_brdlist_update(feed, &mfeed);
     }
 
     return XO_HEAD;
-       
-       
+
+
 }
 
 /* ----------------------------------------------------- */
@@ -773,8 +779,13 @@ rss_body(xo)
     max = xo->max;
     if (max <= 0)
     {
+
 if (vans("要新增ＲＳＳ資料嗎(Y/N)？[N] ") == 'y')
     return rss_add(xo);
+
+
+    blist_del();  // 沒資料時刪掉brdlist.list裡的東西
+
 return XO_QUIT;
     }
 
@@ -812,6 +823,46 @@ rss_help(xo)
     xo_help("rss");
     return rss_head(xo);
 }
+/* ------------------------------------*/
+/* 更新全站訂閱列表 */
+/* ------------------------------------*/
+
+static void
+blist_add()
+{
+ char *fpath = "etc/rss/brdlist.list";
+ int (*sync_func)();
+
+ sync_func=str_cmp;
+
+
+ rec_add(fpath,currboard, sizeof(currboard));
+ rec_sync(fpath, sizeof(currboard), sync_func, NULL);
+
+}
+
+static void
+blist_del()
+{
+  char *fpath = "etc/rss/brdlist.list";
+  char brd_t[BNLEN + 1];
+  register int size ,i ;
+
+
+  size = rec_num(fpath, sizeof(brd_t));
+
+      for (i = 0; i < size; i++)
+if (rec_get(fpath,brd_t, sizeof(brd_t), i) >= 0 &&
+ !strcmp(brd_t,currboard))
+{
+
+rec_del(fpath, sizeof(brd_t), i,NULL);
+break;
+
+}
+
+}
+
 
 
 KeyFunc rss_cb[] =

@@ -111,7 +111,7 @@ init_allbrd()
 
   do
   {
-    /* itoc.040314: 板主更改看板敘述或是站長更改看板時才會把 bpost/blast 寫進 .BRD 中 
+    /* itoc.040314: 板主更改看板敘述或是站長更改看板時才會把 bpost/blast 寫進 .BRD 中
        所以 .BRD 裡的 bpost/blast 未必是對的，要重新 initial。
        initial 的方法是將 btime 設成 -1，讓 class_item() 去更新 */
     head->btime = -1;
@@ -153,7 +153,7 @@ init_allbrd()
     bpal++;
 #endif
 
-  } while (++head < tail);     
+  } while (++head < tail);
 }
 
 
@@ -1102,7 +1102,7 @@ main(argc, argv)
 
     sprintf(title, "%s寄信記錄", date);
     keeplog(FN_RUN_MAIL_LOG, BN_SECURITY, title, 2);
-    
+
     /*080416.cache: 站長行為log*/
     sprintf(title, "%s站務行為記錄", date);
     keeplog(FN_RUN_ADMIN, BN_SECURITY, title, 2);
@@ -1115,6 +1115,11 @@ main(argc, argv)
 #ifdef HAVE_BUY
     sprintf(title, "%s匯錢記錄", date);
     keeplog(FN_RUN_BANK_LOG, BN_SECURITY, title, 2);
+#endif
+
+#ifdef HAVE_SCORE
+    sprintf(title, "%s刪推文紀錄",date);
+    keeplog("run/delscore.log",BN_DELETED,title, 2);
 #endif
 
     system("grep OVER " BMTA_LOGFILE " | cut -f2 | cut -d' ' -f2- | sort | uniq -c > run/over.log");

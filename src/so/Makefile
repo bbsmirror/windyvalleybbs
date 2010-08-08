@@ -15,7 +15,7 @@
 
 SO =	admutil.so aloha.so bank.so chat.so help.so innbbs.so manage.so newbrd.so \
 	song.so vote.so xyz.so \
-	prefix.so calendar.so classtable.so credit.so todo.so
+	prefix.so calendar.so classtable.so credit.so todo.so rssadmin.so
 
 
 .SUFFIXES:

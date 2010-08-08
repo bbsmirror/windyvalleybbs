@@ -25,7 +25,7 @@
 #define COLOR6		"\033[37;44m"	/* more ÀÉÀYªº¤º®eÃC¦â */
 #define COLOR7		"\033[0m"	/* §@ªÌ¦b½u¤WªºÃC¦â */
 
-//for M3_USE_PFTERM    
+//for M3_USE_PFTERM
 #define FILEDFG            (0)         /* ¿é¤J®Øªº«e´ºÃC¦â (¥H 0 - 7 ªí¥Ü) */
 #define FILEDBG            (7)         /* ¿é¤J®Øªº­I´ºÃC¦â (¥H 0 - 7 ªí¥Ü) */
 
@@ -109,7 +109,7 @@
 #define NECKER_GEM	"[¡ö]Â÷¶} [¡÷]ÂsÄý [B]¼Ò¦¡ [C]¼È¦s [F]Âà±H [d]§R°£ [h]»¡©ú  %s\n" \
 			COLOR3 "  ½s¸¹     ¥D              ÃD%*s                            [½s      ¿ï] [¤é  ´Á]\033[m"
 
-//¦Û©w¤ÀÃþ 
+//¦Û©w¤ÀÃþ
 #define NECKER_PREFIX  "[¡ö]Â÷¶} [T]­×§ïÃþ§O [E]­×§ï [m]²¾°Ê [t]¼ÐÅÒ [d/D]§R°£ [^D]¼ÐÅÒ§R°£ [h]»¡©ú\n" \
             COLOR3 "  ½s¸¹   ¤å³¹Ãþ§O    ÄÝ©Ê%*s                                                     \033[m"
 
@@ -130,6 +130,9 @@
 
 #define NECKER_INNBBS	"[¡ö]Â÷¶} [^P]·s¼W [d]§R°£ [E]½s¿è [/]·j´M [Enter]¸Ô²Ó\n" \
 			COLOR3 "  ½s¸¹            ¤º         ®e%*s                                               \033[m"
+
+#define NECKER_RSSADMIN	"[¡ö]Â÷¶} [U]§ó·s [/]·j´M [Enter]¸Ô²Ó\n" \
+			COLOR3 "  ½s¸¹            ¬Ý         ªO%*s                                               \033[m"
 
 
 /* ----------------------------------------------------- */
@@ -158,7 +161,7 @@ COLOR1 " ¥æ½Í¼Ò¦¡ " COLOR2 " (^C,^D)µ²§ô¥æ½Í (^T)¤Á´«©I¥s¾¹ (^Z)§Ö±¶¦Cªí (^G)¹Í¹
 #endif
 
 #define FOOTER_COSIGN	\
-COLOR1 " ³s¸p¾÷¨î " COLOR2 " (ry)¥[¤J³s¸p (kj)¤W¤U½g (¡ô¡õ¡ö)¤W¤UÂ÷¶} (h)»¡©ú                   " 
+COLOR1 " ³s¸p¾÷¨î " COLOR2 " (ry)¥[¤J³s¸p (kj)¤W¤U½g (¡ô¡õ¡ö)¤W¤UÂ÷¶} (h)»¡©ú                   "
 
 #define FOOTER_MORE	\
 COLOR1 " ÂsÄý P.%d (%d%%) " COLOR2 " (h)»¡©ú [PgUp][PgDn][0][$]²¾°Ê (/n)·j´M (C)¼È¦s (¡öq)µ²§ô "
@@ -225,13 +228,15 @@ COLOR1 " »¡©ú¤å¥ó " COLOR2 " (¡ô/¡õ)¤W¤U (PgUp/PgDn)¤W¤U­¶ (Home/End)­º§À (¡÷r)Â
 #define FEETER_INNBBS	\
 COLOR1 " Âà«H³]©w " COLOR2 " (¡ô/¡õ)¤W¤U (PgUp/PgDn)¤W¤U­¶ (Home/End)­º§À (¡ö)(q)Â÷¶}           "
 
-//¦Û©w¤ÀÃþ 
+//¦Û©w¤ÀÃþ
 #define FEETER_PREFIX   \
 COLOR1 " Ãþ§OºÞ²z " COLOR2 " (ENTER)¤Á´«ÄÝ©Ê (a)·s¼W (E)­×§ï (¡ô/¡õ)¤W¤U (PgUp/PgDn)¤W¤U­¶      "
 
 #define FEETER_RSS      \
 COLOR1 " ¢à¢á¢á¾¹ " COLOR2 " (U)Âk¹s§ó·s®É¶¡ (s)§ó·s¦Cªí (E)½s¿è (D)°Ï¬q§R (K)¼È°± (o)³]©w¹LÂo  "
 
+#define FEETER_RSSADMIN      \
+COLOR1 " ¥þ¯¸­q¾\\ " COLOR2 " (U)§ó·s¦Cªí (/)·j´M (¡÷)ºô§}¦Cªí                                    "
 
 /* ----------------------------------------------------- */
 /* ¯¸¥x¨Ó·½Ã±¦W						 */
@@ -241,7 +246,7 @@ COLOR1 " ¢à¢á¢á¾¹ " COLOR2 " (U)Âk¹s§ó·s®É¶¡ (s)§ó·s¦Cªí (E)½s¿è (D)°Ï¬q§R (K)¼È
 
 #define EDIT_BANNER	"\n--\n" \
 			"\033[1;32m¡¼ Origin:\033[m \033[1;33m­·¤§¨¦\033[m \033[1;37m"MYHOSTNAME"\033[m \033[1;31m¡¼ From:\033[m \033[1;37m%.32s\033[m\n"
-			
+
 //¡¼			" \033[1;43m¢«\033[46m¢ª\033[m Or\033[1mig\033[30min\033[m: \033[1;44m "SCHOOLNAME"£»"BBSNAME" \033[42m "MYHOSTNAME" \033[m\n" \
 //			" \033[1;44m¢©\033[41m¢¨\033[m A\033[1mut\033[30mho\033[mr: \033[1;33m%s\033[m ±q \033[1;31m%s\033[m µoªí\n"
 

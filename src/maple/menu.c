@@ -178,7 +178,7 @@ goodbye()
   /* lkchu.990428: 內定改為不離站 */
   case 'g':
   case 'y':
-    break;    
+    break;
 
   case 'm':
     m_sysop();
@@ -201,7 +201,7 @@ goodbye()
 #endif
 
   if (!(cuser.ufo & UFO_MOTD))	/* itoc.000407: 離站畫面一併簡化 */
-  {  
+  {
     clear();
     prints("嘿 \033[32m%s(%s)\033[m，別忘了再度光臨【 %s 】\n"
       "以下是您在站內的註冊資料：\n",
@@ -209,7 +209,7 @@ goodbye()
     acct_show(&cuser, 0);
     vmsg(NULL);
   }
-  
+
   u_exit("EXIT ");
   clear();      /* guessi.060404: 離開前先清掉畫面，避免殘留個人資料 */
   refresh();
@@ -226,8 +226,8 @@ void
 vs_head(title, mid)
   char *title, *mid;
 {
-  //char buf[40], ttl[60]; 
-  //觀察中 
+  //char buf[40], ttl[60];
+  //觀察中
   char buf[(T_COLS - 1) - 79 + 69 + 1], ttl[(T_COLS - 1) - 79 + 69 + 1];
   int spc, len;
 
@@ -255,7 +255,7 @@ vs_head(title, mid)
     mid = "\033[5;41m 郵差來按鈴了 \033[m";
     spc = 14;
   }
-  
+
   else
   {
     if ((spc = strlen(mid)) > len)
@@ -353,16 +353,16 @@ status_foot()
   if (cuser.money != orig_money)
   {
     orig_money = cuser.money;
-    sprintf(coinmsg, "銀%4d%c", 
-      (orig_money & 0x7FF00000) ? (orig_money >> 20) : (orig_money & 0x7FFFFC00) ? (orig_money >> 10) : orig_money, 
+    sprintf(coinmsg, "銀%4d%c",
+      (orig_money & 0x7FF00000) ? (orig_money >> 20) : (orig_money & 0x7FFFFC00) ? (orig_money >> 10) : orig_money,
       (orig_money & 0x7FF00000) ? 'M' : (orig_money & 0x7FFFFC00) ? 'K' : ' ');
     coinmsg[7] = ' ';
   }
   if (cuser.gold != orig_gold)
   {
     orig_gold = cuser.gold;
-    sprintf(coinmsg + 8, "金%4d%c ", 
-      (orig_gold & 0x7FF00000) ? (orig_gold >> 20) : (orig_gold & 0x7FFFFC00) ? (orig_gold >> 10) : orig_gold, 
+    sprintf(coinmsg + 8, "金%4d%c ",
+      (orig_gold & 0x7FF00000) ? (orig_gold >> 20) : (orig_gold & 0x7FFFFC00) ? (orig_gold >> 10) : orig_gold,
       (orig_gold & 0x7FF00000) ? 'M' : (orig_gold & 0x7FFFFC00) ? 'K' : ' ');
   }
 
@@ -414,7 +414,7 @@ static int
 x_sysload()
 {
   char buf[80];
-                                                                                
+
 #if 0
   double *load;
   load = ushm->sysload;
@@ -422,7 +422,7 @@ x_sysload()
   double load[3];
   getloadavg(load, 3);
 #endif
-                                                                                
+
   /* 這三個數值分別表示過去 1, 5, 15 分鐘的負載 */
   sprintf(buf, "系統負載 %.2f %.2f %.2f", load[0], load[1], load[2]);
   vmsg(buf);
@@ -445,15 +445,15 @@ v_counter()
       return 0;
 }
 
-/*cache.080513: 系上公告及廣告板*/ 
+/*cache.080513: 系上公告及廣告板*/
 #define INFO_EMPTY  "Info      \033[1;36m風谷快訊區\033[m"
 #define INFO_HAVE   "Info      \033[1;33m快進來看看\033[m"
-                                                                                
+
 static int
 Information()
 {
   int bno;
-                                                                                
+
   if ((bno = brd_bno(BN_INFO)) >= 0)
   {
     XoPost(bno);
@@ -463,7 +463,7 @@ Information()
 #endif
     return 0;
   }
-                                                                                
+
   return XEASY;
 }
 
@@ -489,6 +489,9 @@ static MENU menu_admin[] =
   "bin/innbbs.so:a_innbbs", PERM_ALLBOARD, - M_SYSTEM,
   "InnBBS     轉信設定",
 
+  "bin/rssadmin.so:a_rssadmin", PERM_ALLBOARD, - M_SYSTEM,
+  "ZRssAdmin  全站訂閱\" ,
+
 #ifdef HAVE_REGISTER_FORM
   "bin/admutil.so:a_register", PERM_ALLREG, - M_SYSTEM,
   "Register   審註冊單",
@@ -499,11 +502,11 @@ static MENU menu_admin[] =
 
   "bin/admutil.so:a_xfile", PERM_ALLADMIN, - M_XFILES,
   "Xfile      系統檔案",
-  
+
   /*080307.cache: 無聊加的系統負載 :) 現在新主機都跑好快...*/
   x_sysload, PERM_ALLADMIN, M_SYSTEM,
   "Load       系統負載",
-  
+
   "bin/admutil.so:a_resetsys", PERM_ALLADMIN, - M_SYSTEM,
   "BBSreset   重置系統",
 
@@ -556,10 +559,10 @@ static MENU menu_mail[] =
 
   m_sysop, 0, M_SMAIL,
   "Yes Sir!   報告站長",
-  
+
   "bin/admutil.so:m_bm", PERM_ALLADMIN, - M_SMAIL,
   "BM All     板主通告",	/* itoc.000512: 新增 m_bm */
-  
+
   "bin/admutil.so:m_all", PERM_ALLADMIN, - M_SMAIL,
   "User All   全站通告",	/* itoc.000512: 新增 m_all */
 
@@ -693,7 +696,7 @@ static MENU menu_user[] =
 
   menu_register, PERM_BASIC, M_UMENU,
   "Register   註冊選單",
-  
+
 //  "bin/admutil.so:a_personal_board", PERM_VALID, - M_XMODE,
 //  "Board      申請個板",
 
@@ -796,7 +799,7 @@ static MENU menu_game1[] =
   "bin/mine.so:main_mine", 0, - M_GAME,
   "5Mine      亂踩地雷",
 
-  "bin/fantan.so:main_fantan", 0, - M_GAME, 
+  "bin/fantan.so:main_fantan", 0, - M_GAME,
   "6Fantan    番攤接龍",
 
   "bin/dragon.so:main_dragon", 0, - M_GAME,
@@ -825,7 +828,7 @@ static MENU menu_game2[] =
 
   "bin/seven.so:main_seven", 0, - M_GAME,
   "4Seven     賭城七張",
- 
+
   "bin/race.so:main_race", 0, - M_GAME,
   "5Race      進賽馬場",
 
@@ -887,7 +890,7 @@ static MENU menu_buy[] =
   "bin/bank.so:x_bank", PERM_BASIC, - M_GAME,
   "Bank       信託銀行",
 
-/* cache.080307: 暫時不予開放 */ 
+/* cache.080307: 暫時不予開放 */
 
   "bin/bank.so:b_invis", PERM_SYSOP, - M_GAME,
   "Invis      隱形現身",
@@ -1032,7 +1035,7 @@ static MENU menu_main[] =
   "Favorite  我的最愛群",
 #endif
 
-  menu_mail, 0, M_MMENU, 
+  menu_mail, 0, M_MMENU,
   "Mail      信件典藏盒",
 
   menu_talk, 0, M_TMENU,
@@ -1058,7 +1061,7 @@ static MENU menu_main[] =
   "主功\能表"
 };
 
-/*cache.080513: 檢查是否有新的文章在SomeBoard看板上*/ 
+/*cache.080513: 檢查是否有新的文章在SomeBoard看板上*/
 static char *
 check_unread(desc)
   char *desc;
