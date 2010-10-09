@@ -732,9 +732,13 @@ gem_link(brdname)	/* 檢查連結去其他看板精華區的權限 */
   char *brdname;
 {
   int bno, level;
-
+  /*
   if ((bno = brd_bno(brdname)) < 0 || !((bno = brd_bits[bno]) & BRD_R_BIT))
-    return -1;
+    return -1; */
+  if ((bno = brd_bno(brdname)) < 0)
+      return -1;
+  if (!((bno = brd_bits[bno]) & BRD_R_BIT))
+      return -2;
 
   level = 0;
   if (bno & BRD_X_BIT)

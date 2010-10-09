@@ -511,15 +511,17 @@ mf_browse(xo)
   if (type & MF_BOARD)		/* 看板捷徑 */
   {
     /* itoc.010726: 若是看板已經被砍或權限沒有了，則要移除捷徑 */
-    if ((bno = brd_bno(xname)) < 0 || !(brd_bits[bno] & BRD_R_BIT))
+    if ((bno = brd_bno(xname)) < 0)
     {
       rec_del(xo->dir, sizeof(MF), xo->pos, NULL);
-      vmsg("本看板已被刪除或您沒有權限閱\讀本看板，系統將自動移除捷徑");
+     // vmsg("本看板已被刪除或您沒有權限閱\讀本看板，系統將自動移除捷徑");
+      vmsg("本看板已被刪除，系統將自動移除捷徑");
       return mf_load(xo);
     }
 
     brd = bshm->bcache + bno;
-    XoPost(bno);
+    if(XoPost(bno))
+	return XO_FOOT;
     xover(XZ_POST);
 #ifndef ENHANCED_VISIT
     time(&brd_visit[bno]);
@@ -537,8 +539,14 @@ mf_browse(xo)
     /* itoc.010726: 若是看板已經被砍或權限沒有了，則要移除捷徑 */
     if ((type = gem_link(xname)) < 0)
     {
+      if (type == -2){	  
+ 	  vmsg("對不起，此精華區只准板友進入，請向板主申請入境許\可");  
+          return XO_FOOT;
+      }
+
       rec_del(xo->dir, sizeof(MF), xo->pos, NULL);
-      vmsg("本看板已被刪除或您沒有權限閱\讀本看板，系統將自動移除捷徑");
+     // vmsg("本看板已被刪除或您沒有權限閱\讀本看板，系統將自動移除捷徑");
+      vmsg("本看板已被刪除，系統將自動移除捷徑");
       return mf_load(xo);
     }
 
