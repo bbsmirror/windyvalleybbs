@@ -124,6 +124,7 @@ XoBM_Refuse_pal(xo)
 
   RefusePal_fpath(fpath, currboard, 'C', hdr);
   xz[XZ_PAL - XO_ZONE].xo = xt = xo_new(fpath);
+  xt->key=PALTYPE_PAL;
   xover(XZ_PAL);
   refusepal_cache(hdr, currboard);
   free(xt);
