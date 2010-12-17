@@ -1489,6 +1489,10 @@ re_key:
     case 'X':
       post_score(xo);
       return post_init(xo);
+
+    case '%':
+      post_editscore(xo);
+      return post_init(xo);
 #endif
 
     case '/':
@@ -3631,13 +3635,13 @@ post_score(xo)
 
 #ifdef HAVE_ANONYMOUS
   if (currbattr & BRD_ANONYMOUS)
-    maxlen = 64 - IDLEN - vtlen;
+    maxlen = 64 - IDLEN - vtlen + 2;
   else
 #endif
     //maxlen = 64 - strlen(cuser.userid) - vtlen;
     maxlen = 64 - 10 - vtlen;
 //改掉strlen(cuser.userid)直接算長度
-  if (!vget(b_lines, 0, "請輸入理由：", reason, maxlen, DOECHO))
+  if (!vget(b_lines, 0, "請 輸 入 理 由 ： ", reason, maxlen, DOECHO))
     return XO_FOOT;
 
 #ifdef HAVE_ANONYMOUS
@@ -4048,7 +4052,7 @@ static int
 post_delscore(xo)
   XO *xo;
 {
-  int start_quote, len, nomodify=0;
+  int start_quote = 0, len, nomodify = 0;
   HDR *hdr;
   char fpath[64], fnew[64], userid[32], reason[50], buf[ANSILINELEN],log[ANSILINELEN];
   char *fdlog="run/delscore.log";
@@ -4085,43 +4089,38 @@ post_delscore(xo)
 
 
   start_quote = 0;
-  while (fgets(buf, sizeof(buf), fpr))
-  {
-    if (!start_quote)
-    {
-      if (strstr(buf, "\033[1;32m□ Origin:") == buf)
+  while (fgets(buf, sizeof(buf), fpr)){
+    if (!start_quote){
+      if (!strncmp(buf, "\033[1;32m□ Origin:\033[m", 20)) //站籤
         start_quote = 1;
     }
-    else
-    {
-      if(nomodify) {
-        if ((bbstate & STAT_BOARD || !strncmp(buf, userid, len)) && strstr(buf, reason))
-        {
-          // 若加入下一行 continue; 那麼在文章內就不會顯示推文被刪除的訊息
-          if(nomodify)
-            continue;
-        }
-      }
-      else {
-        if ((bbstate & STAT_BOARD || !strncmp(buf, userid, len)) && strstr(buf, reason))
-        {
-              if(!fpL)
-              {   sprintf(log,"[BOARDNAME: %s ][XNAME: %s ]\n",currboard,hdr->xname);
-                  f_cat(fdlog,log);//log只寫入一次
+    else {
+                /*判斷是否為該使用者的推文之方式有待探討*/
+        if ((bbstate & STAT_BOARD) || !strncmp(buf, userid, len)) { //板主或自己的推文
 
-                  fpL = fopen(fdlog, "a");
+	    if (strstr(buf, reason)){ // +35: 移動到文字位置
+	    	if (nomodify && !strncmp(buf, "\033[1;32m◆ Modify:\033[m \033[1;37m", 28))
+	      	    continue;
+    		else if (!strncmp(buf, "\033[1;36m", 7) &&
+    			(!strncmp(buf + 20, " \033[1;31m", 8) || !strncmp(buf+20, " \033[1;32m", 8) || !strncmp(buf+20, " \033[1;33m", 8))){
+    			/*推文格式: 0 - 6 : \033[1;36m
+		   	            7 - 19 : ID
+		    		    20 - 27: ' ' + \033[1;3(1,2,3)m */
+	  	   if(!fpL) {
+	    	       sprintf(log,"[BOARDNAME: %s ][XNAME: %s ]  %s\n", currboard, hdr->xname, cuser.userid);
+                       f_cat(fdlog,log);   // 每次刪除log只寫入一次
+                       fpL = fopen(fdlog, "a");
+                   }
 
-              }
-
-              fputs(buf,fpL);//寫入備份
-
-
-              sprintf(buf, "\033[1;36m%13s\033[m \033[1;33m→\033[m："
-              "%-51s %02d/%02d/%02d\n",
-             cuser.userid, "此評論已被刪除",
-              ptime->tm_year % 100, ptime->tm_mon + 1, ptime->tm_mday);
-        }
-      }
+		   fputs(buf, fpL);
+                   sprintf(buf, "\033[1;36m%13s\033[m \033[1;33m→\033[m："   /*此格式暫先不要更動*/
+                     "%-51s %02d/%02d/%02d\n",
+                   cuser.userid, "此評論已被刪除",
+                   ptime->tm_year % 100, ptime->tm_mon + 1, ptime->tm_mday);
+    	         }
+			    /*維基與刪除紀錄本身即不合推文格式，因ID後面直接連接ANSI控制碼*/
+	     }
+	}
     }
     fputs(buf, fpw);
   }
@@ -4190,8 +4189,9 @@ static int
 post_help(xo)
   XO *xo;
 {
+    
   xo_help("post");
-  /* return post_head(xo); */
+ /* return post_head(xo); */
   return XO_HEAD;		/* itoc.001029: 與 xpost_help 共用 */
 }
 

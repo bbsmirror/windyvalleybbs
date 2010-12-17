@@ -1293,7 +1293,7 @@ mf_display()
 
     /* process scrolling */
     if (mf.oldlineno >= 0 && mf.oldlineno != mf.lineno)
-    {
+	{
         int scrll = mf.lineno - mf.oldlineno, i;
         int reverse = (scrll > 0 ? 0 : 1);
 
@@ -1353,7 +1353,7 @@ mf_display()
 
     mf.dispe = mf.disps;
     while (lines < MFDISP_PAGE) 
-    {
+	{
         int inAnsi = 0;
         int newline = newline_default;
         int predicted_linewidth = -1;
@@ -2118,7 +2118,7 @@ pmore(const char *fpath, int promptend)
                 refresh();
 
                 if(mf_movieSyncFrame())
-                {
+				{
                     /* user did not hit anything.
                      * play next frame.
                      */
@@ -2138,7 +2138,7 @@ pmore(const char *fpath, int promptend)
                         }
                     }
                     else if(mfmovie.mode == MFDISP_MOVIE_PLAYING_OLD)
-                    {
+					{
                         if(mf_viewedAll())
                         {
                             mfmovie.mode = MFDISP_MOVIE_NO;
@@ -4041,7 +4041,7 @@ mf_movieNextFrame()
                 mf_forward(1);
 
             return 1;
-        }
+		}
 
         if (mf_forward(1) <= 0)
             break;
