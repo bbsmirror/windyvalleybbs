@@ -30,7 +30,7 @@
  *
  * Author: Hung-Te Lin (piaip), June 2005.
  *
- * Copyright (c) 2005-2008 Hung-Te Lin <piaip@csie.ntu.edu.tw>
+ * Copyright (c) 2005-2009 Hung-Te Lin <piaip@csie.ntu.edu.tw>
  * All rights reserved.
  * 
  * Distributed under a Non-Commercial 4clause-BSD alike license.
@@ -96,14 +96,20 @@
  *  - movie: Optimization on named frames (by hash) [pending]
  *  -
  *  - (2008) Maple3 BBS porting [done, thanks to hrs113355 for initial work]
+ *  - (2009) movie: add INCLUDE/INTERRUPT command [done]
+ *  - (2009) Better help system [done]
+ *  - (2009) Customizable key and help handler [done]
+ *  - (2009) Customizable footer bar floating prompts [done]
+ *  - (2010) Auto Decompression [done]
  *  - Reject waterball (instant message) when playing movie
  *  - Support Anti-anti-idle (ex, PCMan sends up-down)
- *  - Better help system [pending]
+ *  - Deal or disable Ctrl-U (invokes userlist then waiting one more key)
  *  - Virtual Contatenate [pending]
- *  - Virtual Decompression [pending]
  *  - Drop ANSI between DBCS words if outputing UTF8 [drop, done by term]
  */
 
+/* FinFunnel: 使 M3_USE_PFTERM 能被使用解決 #ifndef M3_USE_PFTERM 的問題 */
+#include "bbs.h"
 // --------------------------------------------------------------- <FEATURES>
 /* These are default values.
  * You may override them in your bbs.h or config.h etc etc.
@@ -115,7 +121,6 @@
 #define PMORE_USE_ASCII_MOVIE           // support ascii movie
 #define PMORE_USE_INTERNAL_HELP         // display pmore internal help
 #define PMORE_USE_REPLYKEY_HINTS        // prompt user the keys to reply/commenting
-#define PMORE_USE_SOB_THREAD_NAV        // use SOB-like thread navigation
 #define PMORE_HAVE_SYNCNOW              // system needs calling sync API
 #define PMORE_HAVE_NUMINBUF             // input system have num_in_buf API
 #define PMORE_IGNORE_UNKNOWN_NAVKEYS    // does not return for all unknown keys
@@ -131,7 +136,11 @@
 
 // if you are working with a terminal without ANSI control,
 // you are using a poor term (define PMORE_USING_POOR_TERM).
-#ifndef USE_PFTERM                      // pfterm is a good terminal system.
+
+/* FinFunnel: 改換 M3_USE_PFTERM 使 PMORE_USING_POOR_TERM 不會被 define */
+/*            以消除回到上一Frame時產生的畫面殘留狀況 */
+#ifndef M3_USE_PFTERM
+//#ifndef USE_PFTERM                      // pfterm is a good terminal system.
 #define PMORE_USING_POOR_TERM
 #define PMORE_WORKAROUND_CLRTOEOL       // try to work with poor terminal sys
 #endif // USE_PFTERM
@@ -139,17 +148,36 @@
 
 // ----------------------------------------------------------- <LOCALIZATION>
 // Messages for localization are listed here.
+
+#define PMORE_MSG_PROGVER  "pmore 2007+"
+
 #define PMORE_MSG_PREF_TITLE \
-    " piaip's more: pmore 2007 設定選項 "
+     " piaip's more: " PMORE_MSG_PROGVER " 設定選項 "
 #define PMORE_MSG_PREF_TITLE_QRAW \
-    " piaip's more: pmore 2007 快速設定選項 - 色彩(ANSI碼)顯示模式 "
+     " piaip's more: " PMORE_MSG_PROGVER " 快速設定 - 色彩(ANSI碼)顯示模式 "
+#define PMORE_MSG_HELP_TITLE \
+     " piaip's more: " PMORE_MSG_PROGVER " 瀏覽程式使用說明"
+#define PMORE_MSG_HELP_PAUSE \
+     "請按任意鍵離開此說明畫面"
 #define PMORE_MSG_WARN_FAKEUSERINFO \
     "                                 (h)按鍵說明 ←[q]離開 "
-//    " ▲此頁內容會依閱\讀者不同,原文未必有您的資料 "
+//     " ▲此頁內容會依閱\讀者不同,原文未必有您的資料 "
 #define PMORE_MSG_WARN_MOVECMD \
-    " ▲此頁內容含移位碼,可能會顯示偽造的系統訊息 "
+     " ▲此頁內容含移位碼,可能會顯示偽造的系統訊息 "
 #define PMORE_MSG_SEARCH_KEYWORD \
-    "[搜尋]關鍵字:"
+     "[搜尋]關鍵字:"
+#define PMORE_MSG_SEARCH_LETTERCASE \
+     "區分大小寫(Y/N/Q)? "
+#define PMORE_MSG_GOTO_PAGE \
+     "跳至此頁(若要改指定行數請在結尾加.): "
+#define PMORE_MSG_GOTO_LINE \
+     "跳至此行: "
+#define PMORE_MSG_QPREF_SUBJECT \
+     "色彩顯示方式:"
+#define PMORE_MSG_QPREF_OPTIONS \
+     "1.預設格式化內容\t2.原始ANSI控制碼\t3.純文字"
+#define PMORE_MSG_QPREF_PROMPT \
+     "請調整設定 (1-3 可直接選定，\\可切換) 或其它任意鍵結束。"
 
 #define PMORE_MSG_MOVIE_DETECTED \
     " ★ 這份文件是可播放的文字動畫，要開始播放嗎？ [Y/n]"
@@ -158,11 +186,13 @@
 #define PMORE_MSG_MOVIE_PLAYOLD_AS24L \
     "傳統動畫是以 24 行為單位設計的, 要模擬 24 行嗎? (否則會用現在的行數)[Yn] "
 #define PMORE_MSG_MOVIE_PAUSE \
-  " >>> 暫停播放動畫，請按任意鍵繼續或 q 中斷。 <<<"
+    " >>> 暫停播放動畫，請按任意鍵繼續或 q 中斷。 <<<"
 #define PMORE_MSG_MOVIE_PLAYING \
     " >>> 動畫播放中... 可按 q, Ctrl-C 或其它任意鍵停止";
 #define PMORE_MSG_MOVIE_INTERACTION_PLAYING \
     " >>> 互動式動畫播放中... 可按 q 或 Ctrl-C 停止";
+#define PMORE_MSG_MOVIE_INTERACTION_WAITSEL \
+    " >> 請輸入選項:  (互動式動畫播放中，可按 q 或 Ctrl-C 中斷)"
 #define PMORE_MSG_MOVIE_INTERACTION_STOPPED \
     "已強制中斷互動式系統"
 
@@ -197,8 +227,6 @@
 
 // ---------------------------------------------------------- </LOCALIZATION>
 
-#include "bbs.h"
-
 // ---------------------------------------------------------------- <PORTING>
 // Generic Porting
 // ----------------------------------------------------------------
@@ -226,6 +254,9 @@
 //       free(fimage);
 //    +#endif // M3_USE_PMORE
 //       if (!cmd)    /* ... 
+//  (3) if you want to override to override any special keys 
+//     or help pages, you may change to pmore2 and write
+//     your own key_handler and help_handler.
 #ifdef M3_USE_PMORE
 
 /*cache: hpo14'spatch */
@@ -243,9 +274,11 @@
  #define RELATE_NEXT ']'
  #define READ_NEXT   'j'
  #define READ_PREV   'k'
+ #if !defined(FULLUPDATE) && defined(XO_HEAD)
+ # define FULLUPDATE XO_HEAD
+ #endif
  // environments and features
  #undef PMORE_USE_INTERNAL_HELP
- #undef PMORE_USE_SOB_THREAD_NAV
  #undef PMORE_USE_REPLYKEY_HINTS
  #undef PMORE_HAVE_SYNCNOW
  #undef PMORE_HAVE_NUMINBUF
@@ -256,6 +289,8 @@
  #ifndef  SHOW_USER_IN_TEXT
  # undef  PMORE_EXPAND_ESC_STAR
  #endif // !SHOW_USER_IN_TEXT
+ // disable CLRTOEOL workaround: old M3 may has problem with FORCE_CLRTOEOL... you can comment this if your system is OK with it.
+ #define PMORE_NO_FORCE_CLRTOEOL
  // use m3 style separator [none]: comment these if you like Maple2.36/SOB/PTT style
  #undef MFDISP_SEP_DEFAULT
  #define MFDISP_SEP_DEFAULT MFDISP_SEP_NONE
@@ -284,6 +319,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -354,7 +390,7 @@
  */
 
 #ifdef DEBUG
-int debug = 0;
+static int debug = 0;
 # define MFPROTO
 # define MFFPROTO
 #else
@@ -367,6 +403,10 @@ int debug = 0;
 #define ustrchr(x,y)    (unsigned char*)strchr((char*)x, y)
 #define ustrrchr(x,y)   (unsigned char*)strrchr((char*)x, y)
 
+// NOTE: this is a special strlen to speed up processing.
+// WARNING: x MUST be #define x "msg".
+// otherwise you need to use real strlen.
+#define PMORE_MACROSTRLEN(x) (sizeof(x)-1)
 
 // --------------------------------------------- <Defines and constants>
 
@@ -387,12 +427,10 @@ int debug = 0;
 // Common ANSI commands.
 #define ANSI_RESET      ESC_STR "[m"
 #define ANSI_COLOR(x)   ESC_STR "[" #x "m"
-
 /* cache.080920:by hpo14's fix */
 /* M3 is not support [K, it might be dangerous */
 //#define ANSI_CLRTOEND   ESC_STR "[K"
 #define ANSI_CLRTOEND   "" 
-
 #define ANSI_MOVETO(y,x) ESC_STR "[" #y ";" #x "H"
 
 #define ANSI_IN_ESCAPE(x) (((x) >= '0' && (x) <= '9') || \
@@ -408,7 +446,12 @@ int debug = 0;
 //   and usually messed up when output ANSI quoted string.
 // - A workaround is suggested by kcwu:
 //   https://opensvn.csie.org/traccgi/pttbbs/trac.cgi/changeset/519
-#define FORCE_CLRTOEOL() outs(ANSI_CLRTOEND)
+// - If you have problem using this workaround, define PMORE_NO_FORCE_CLRTOEOL
+#ifndef PMORE_NO_FORCE_CLRTOEOL
+# define FORCE_CLRTOEOL() outs(ANSI_CLRTOEND)
+#else
+# define FORCE_CLRTOEOL() clrtoeol()
+#endif
 
 /* Again, if you have a BBS system which optimized out* without recognizing
  * ANSI escapes, scrolling with ANSI text may result in melformed text (because
@@ -436,7 +479,7 @@ MFFPROTO void
 pmore_outns(const char *str, int n)
 {
     while (*str && n--) {
-	outc((unsigned char)*str++);
+        outc((unsigned char)*str++);
     }
 }
 
@@ -581,11 +624,24 @@ enum MFSEARCH_DIRECTION {
     fh.lines = -1; }
 
 // Artwork
-#define OPTATTR_NORMAL      ANSI_COLOR(0;34;47)
-#define OPTATTR_NORMAL_KEY  ANSI_COLOR(0;31;47)
-#define OPTATTR_SELECTED    ANSI_COLOR(0;1;37;46)
-#define OPTATTR_SELECTED_KEY ANSI_COLOR(0;31;46)
-#define OPTATTR_BAR         ANSI_COLOR(0;1;30;47)
+#define OPTATTR_NORMAL        ANSI_COLOR(0;34;47)
+#define OPTATTR_NORMAL_KEY    ANSI_COLOR(0;31;47)
+#define OPTATTR_SELECTED      ANSI_COLOR(0;1;37;46)
+#define OPTATTR_SELECTED_KEY  ANSI_COLOR(0;31;46)
+#define OPTATTR_BAR           ANSI_COLOR(0;1;30;47)
+#define PREFATTR_NORMAL       ANSI_COLOR(0)
+#define PREFATTR_NORMAL_KEY   ANSI_COLOR(0;1;31)
+#define PREFATTR_SELECTED     ANSI_COLOR(0;1;36)
+#define PREFATTR_SELECTED_KEY ANSI_COLOR(0;1;31)
+#define PREFATTR_BAR          ANSI_COLOR(0;1;30)
+#define PMHLPATTR_NORMAL      ANSI_COLOR(0)
+#define PMHLPATTR_NORMAL_KEY  ANSI_COLOR(0;1;36)
+#define PMHLPATTR_HEADER      ANSI_COLOR(0;1;32)
+
+// Prompt Bar Shadow
+#define PMORE_SHADOW_ABOVE      (1)
+#define PMORE_SHADOW_BELOW      (2)
+#define PMORE_SHADOW_NONE       (0)
 
 // --------------------------- </Aux. Structures>
 
@@ -608,7 +664,29 @@ enum MFSEARCH_DIRECTION {
 int
 expand_esc_star(char *buf, const char *src, int szbuf)
 {
-    return expand_esc_star_visio( buf, src, szbuf);
+    assert(*src == KEY_ESC && *(src+1) == '*');
+    src += 2;
+    switch(*src)
+    {
+        // secure content (return 1)
+        case 't':   // current time.
+            strlcpy(buf, Now(), szbuf);
+            return 1;
+        // insecure content (return 2)
+        case 's':   // current user id
+            strlcpy(buf, cuser.userid, szbuf);
+            return 2;
+        case 'l':   // current user logins
+            snprintf(buf, szbuf, "%d", cuser.numlogins);
+            return 2;
+        case 'p':   // current user posts
+            snprintf(buf, szbuf, "%d", cuser.numposts);
+            return 2;
+    }
+
+    // unknown characters, return from star.
+    strlcpy(buf, src-1, szbuf);
+    return 0;
 }
 
 #endif // defined(PMORE_EXPAND_ESC_STAR) && !defined(HAVE_EXPAND_ESC_STAR)
@@ -628,6 +706,8 @@ typedef struct {
     struct timeval synctime;
     unsigned char *options,
                   *optkeys;
+    unsigned char *intr_src;
+    unsigned int   intr_dest_frame;
     unsigned char  mode,
                    compat24,
                    interactive,
@@ -651,6 +731,8 @@ MF_Movie mfmovie;
     mfmovie.mode = MFDISP_MOVIE_UNKNOWN; \
     mfmovie.options = NULL; \
     mfmovie.optkeys = NULL; \
+    mfmovie.intr_src= NULL; \
+    mfmovie.intr_dest_frame = 0; \
     mfmovie.compat24 = 1; \
     mfmovie.pause    = 0; \
     mfmovie.interactive     = 0; \
@@ -667,7 +749,7 @@ unsigned char *
 
 void mf_float2tv(float f, struct timeval *ptv);
 
-MFPROTO int pmore_wait_key(struct timeval *ptv, int dorefresh);
+MFPROTO int mf_movieWaitKey(struct timeval *ptv, int dorefresh);
 MFPROTO int mf_movieNextFrame();
 MFPROTO int mf_movieSyncFrame();
 MFPROTO int mf_moviePromptPlaying(int type);
@@ -681,6 +763,8 @@ MFFPROTO int mf_movieMaskedInput(int c);
 // some magic value that your vkey() will never return
 #define MOVIE_KEY_ANY (0x4d464b41)  
 
+// some environments already converted 0x7F to 0x08,
+// but we'd still do it again here for compatibility.
 #ifndef MOVIE_KEY_BS2
 #define MOVIE_KEY_BS2 (0x7f)
 #endif
@@ -693,6 +777,67 @@ MFPROTO void mf_parseHeaders();
 MFPROTO void mf_freeHeaders();
 MFPROTO void mf_determinemaxdisps(int, int);
 
+#ifdef PMORE_GUNZIP_CMD
+
+#include <sys/wait.h>
+
+MFPROTO int
+mf_gunzip(const char *fn, int fd)
+{
+    char magic[2] = {0};
+    const char gzip_magic[2] = {0x1f, 0x8b};
+    FILE *tmp;
+    int tmp_fd, sts = 0;
+
+    // quick abort if fd is invalid
+    if (fd < 0)
+        return fd;
+
+    // TODO since most files were not gzipped, maybe we can
+    // move type checking to "after mmap attached"
+    if (read(fd, magic, sizeof(magic)) != sizeof(magic) ||
+        memcmp(gzip_magic, magic, sizeof(magic) != 0)) {
+        // XXX since we only use 'mmap' in pmore, no need to rewind fd
+        return fd;
+    }
+
+    // create temp file
+    tmp = tmpfile();
+    assert(tmp);
+    tmp_fd = dup(fileno(tmp));
+    assert(tmp_fd > 0);
+    fclose(tmp);
+
+    // rewind for decompression
+    lseek(fd, 0, SEEK_SET);
+
+    switch(fork())
+    {
+        case 0:
+            // child
+            dup2(fd, 0);        // input
+            dup2(tmp_fd, 1);    // output
+            dup2(tmp_fd, 2);    // err
+            // sample: gunzip -d -c
+            exit(system(PMORE_GUNZIP_CMD));
+            break;
+
+        case -1:
+            // error
+            close(tmp_fd);
+            return fd;
+
+        default:
+            // parent
+            wait(&sts);  // since file is gzipped, tmp gives error if failed.
+            break;
+    }
+
+    close(fd);
+    return tmp_fd;
+}
+#endif
+
 /* 
  * mmap basic operations 
  */
@@ -700,7 +845,11 @@ MFPROTO int
 mf_attach(const char *fn)
 {
     struct stat st;
-    int fd = open(fn, O_RDONLY, 0600);
+    int fd = open(fn, O_RDONLY);
+
+#ifdef PMORE_GUNZIP_CMD
+    fd = mf_gunzip(fn, fd);
+#endif
 
     if(fd < 0)
         return 0;
@@ -727,8 +876,10 @@ mf_attach(const char *fn)
         return 0;
     }
 
+#ifdef MADV_SEQUENTIAL
     // BSD mmap advise. comment if your OS does not support this.
     madvise(mf.start, mf.len, MADV_SEQUENTIAL);
+#endif
 
     mf.end = mf.start + mf.len;
     mf.disps = mf.dispe = mf.start;
@@ -977,6 +1128,7 @@ mf_search(int direction)
                 if(sr.cmpfunc((char*)mf.disps, (char*)s, l) == 0)
                 {
                     flFound = 1;
+                    break;
                 } else
                 {
                     /* DBCS check here. */
@@ -1052,14 +1204,6 @@ pmore_str_chomp(unsigned char *p)
     if(pb != p)
         memmove(p, pb, ustrlen(pb)+1);
 }
-
-#if 0
-int 
-pmore_str_safe_big5len(unsigned char *p)
-{
-    return 0;
-}
-#endif
 
 /*
  * Format Related
@@ -1280,7 +1424,7 @@ mf_display()
     MFDISP_FORCEUPDATE2TOP();
     MFDISP_FORCEUPDATE2BOT();
 
-#ifdef PMORE_USE_OPT_SCROLL
+#ifdef PMORE_USE_OPT_SCROLL 
 
 #if defined(PMORE_USE_ASCII_MOVIE) && !defined(PMORE_USING_POOR_TERM)
     // For movies, maybe clear() is better.
@@ -1293,10 +1437,10 @@ mf_display()
 
     /* process scrolling */
     if (mf.oldlineno >= 0 && mf.oldlineno != mf.lineno)
-	{
+    {
         int scrll = mf.lineno - mf.oldlineno, i;
         int reverse = (scrll > 0 ? 0 : 1);
-
+        
         if(reverse) 
             scrll = -scrll;
         else
@@ -1305,8 +1449,6 @@ mf_display()
              * we have to erase it here.
              */
             pmore_clrtoeol(b_lines, 0);
-            // move(b_lines, 0);
-            // clrtoeol();
         }
 
         if(scrll > MFDISP_PAGE)
@@ -1336,8 +1478,6 @@ mf_display()
             // clear the line which will be scrolled
             // to bottom (status line position).
             pmore_clrtoeol(b_lines, 0);
-            // move(b_lines, 0);
-            // clrtoeol();
         }
         else
         {
@@ -1349,11 +1489,11 @@ mf_display()
     }
     else
 #endif
-        clear(), move(0, 0);
+    {  clear(); move(0, 0);  }
 
     mf.dispe = mf.disps;
     while (lines < MFDISP_PAGE) 
-	{
+    {
         int inAnsi = 0;
         int newline = newline_default;
         int predicted_linewidth = -1;
@@ -1434,7 +1574,7 @@ mf_display()
             /* case 1, header separator line */
             if (bpref.separator & MFDISP_SEP_LINE)
             {
-                outs(ANSI_COLOR(36));
+                outs(ANSI_COLOR(0;36));
                 for(col = 0; col < headerw; col+=2)
                 {
                     // prints("%02d", col);
@@ -1522,19 +1662,19 @@ mf_display()
                         (*mf.dispe == ':' || *mf.dispe == '>') && 
                         *(mf.dispe+1) == ' ')
                 {
-                    outs(ANSI_COLOR(36));
+                    outs(ANSI_COLOR(0;36));
                     flResetColor = 1;
                 } else if (dist > 2 && 
                         (!strncmp((char*)mf.dispe, "※", 2) || 
                          !strncmp((char*)mf.dispe, "==>", 3)))
                 {
-                    outs(ANSI_COLOR(32));
+                    outs(ANSI_COLOR(0;32));
                     flResetColor = 1;
                 }
             }
 
             while(!breaknow && mf.dispe < mf.end && (c = *mf.dispe) != '\n')
-            {
+			{
                 if(inAnsi)
                 {
                     if (!ANSI_IN_ESCAPE(c))
@@ -1576,9 +1716,9 @@ mf_display()
                                 // relax for movies
                                 if (!MOVIE_IS_PLAYING())
 #endif // PMORE_USE_ASCII_MOVIE
-                                {
-                                    override_attr = ANSI_COLOR(1;37;41);
-                                    override_msg = PMORE_MSG_WARN_MOVECMD;
+                                {   /* 直接註解不更動任何畫面 */
+                                    //override_attr = ANSI_COLOR(1;37;41);
+                                    //override_msg = PMORE_MSG_WARN_MOVECMD;
                                 }
 #endif // PMORE_RESTRICT_ANSI_MOVEMENT
                                 needMove2bot = 1;
@@ -1645,10 +1785,9 @@ mf_display()
                             esbuf[sizeof(esbuf)-1] = 0; // because we use strncpy.
                             
                             if (expand_esc_star(buf, esbuf, sizeof(buf)) > 1)
-                            {
-//                                override_attr = ANSI_COLOR(1;37;41);
-                                override_attr = ANSI_COLOR(31;47);
-                                override_msg  = PMORE_MSG_WARN_FAKEUSERINFO;
+                            {  /* FinFunnel: 直接註解不更動任何畫面 */
+                               // override_attr = ANSI_COLOR(1;37;41);
+                               // override_msg  = PMORE_MSG_WARN_FAKEUSERINFO;
                             }
                         }
                         i = strlen(buf);
@@ -1828,6 +1967,7 @@ mf_display()
                 if(!breaknow)
                     mf.dispe ++;
             }
+
             if(flResetColor)
                 outs(ANSI_RESET);
 
@@ -1911,45 +2051,208 @@ mf_display()
         move(b_lines, 0);
 }
 
+MFPROTO void
+mf_display_footer(
+        int (*footer_handler)(int ratio, int width, void *ctx), void *ctx)
+{
+    // format:
+    // |PageNo Percentage|Detail Info|Floating1 (context)|Floating2 (quit)
+    // |SUMMARY|DETAIL|HELP
+    
+    char buf[256];              // must be large enough to hold temporary data
+    int  avail = t_columns-1;   // available space
+    int  w;                     // for width calculation
+
+    /*
+     * page determination is hard.
+     * should we use starting line, or finishing line?
+     */
+    int nowpage = 
+        (int)((mf.lineno + mf.dispedlines/2) / MFNAV_PAGE)+1;
+    int allpages = -1; /* unknown yet */
+    int progress  = 
+        (int)((unsigned long)(mf.dispe-mf.start) * 100 / mf.len);
+
+#ifdef DEBUG
+    if(debug)
+    {
+        /* in debug mode don't print ANSI codes
+         * because themselves are buggy.
+         */
+        prints("L#%ld(w%ld,lp%ld) Dsp:%08X/%08X/%08X, "
+                "F:%08X/%08X(%d) tScr(%dx%d)",
+                mf.lineno, mf.wraplines, mf.lastpagelines,
+                (unsigned int)mf.disps, 
+                (unsigned int)mf.maxdisps,
+                (unsigned int)mf.dispe,
+                (unsigned int)mf.start, (unsigned int)mf.end,
+                (int)mf.len,
+                t_columns,
+                t_lines
+              );
+        return;
+    }
+#endif
+
+    // determine pges
+    if (mf.maxlinenoS >= 0)
+    {
+        allpages = 
+            (int)((mf.maxlinenoS + mf.lastpagelines -
+                        ((bpref.separator & MFDISP_SEP_WRAP) &&
+                         (fh.lines >= 0) ? 0:1)) / MFNAV_PAGE)+1;
+        if (mf.lineno >= mf.maxlinenoS || nowpage > allpages)
+            nowpage = allpages;
+        /*
+           nowpage = 
+           (int)((mf.lineno + mf.dispedlines-2) / MFNAV_PAGE)+1 ;
+           */
+    }
+    /* why -2 and -1?
+     * because we want to determine by nav_page,
+     * and mf.dispedlines is based on disp_page (nav_page+1)
+     * mf.lastpagelines is based on nav_page
+     */
+
+    // determine summary colours
+    outs(ANSI_RESET);
+    if(mf_viewedAll())
+        outs(PMORE_COLOR_FOOTER1_VIEWALL);
+    else if (mf_viewedNone())
+        outs(PMORE_COLOR_FOOTER1_VIEWNONE);
+    else
+        outs(PMORE_COLOR_FOOTER1);
+
+    // old status bar: quick draw
+    if(bpref.oldstatusbar)
+    {
+        prints("  瀏覽 P.%d(%d%%)  ", nowpage, progress);
+        outs(
+                PMORE_COLOR_FOOTER3      "  "
+                PMORE_COLOR_FOOTER3_KEY  "(h)" 
+                PMORE_COLOR_FOOTER3_TEXT "求助  "
+                PMORE_COLOR_FOOTER3_KEY  
+                "→↓[PgUp][PgDn][Home][End]"
+                PMORE_COLOR_FOOTER3_TEXT "游標移動  "
+                PMORE_COLOR_FOOTER3_KEY  "←[q]"
+                PMORE_COLOR_FOOTER3_TEXT "結束   "
+            );
+        return;
+    } 
+
+    // pmore style footer
+
+    // part 1, brief report (SUMMAR)
+    if(allpages >= 0)
+        snprintf(buf, sizeof(buf),
+                "  瀏覽 第 %1d/%1d 頁 (%3d%%) ",
+                nowpage,
+                allpages,
+                progress
+               );
+    else
+        snprintf(buf, sizeof(buf),
+                "  瀏覽 第 %1d 頁 (%3d%%) ",
+                nowpage,
+                progress
+               );
+    avail -= strlen(buf);
+    outs(buf);
+
+    // part 2, status report (DETAIL)
+    outs(PMORE_COLOR_FOOTER2);
+    if(override_msg)
+    {
+        buf[0] = 0;
+        if(override_attr) outs(override_attr);
+        strlcpy(buf, override_msg, sizeof(buf));
+        RESET_OVERRIDE_MSG();
+    }
+    else
+    {
+        if(mf.xpos > 0)
+        {
+            snprintf(buf, sizeof(buf),
+                    " 顯示範圍: %d~%d 欄位, %02d~%02d 行",
+                    (int)mf.xpos+1, 
+                    (int)(mf.xpos + t_columns-(mf.trunclines ? 2 : 1)),
+                    (int)(mf.lineno + 1),
+                    (int)(mf.lineno + mf.dispedlines)
+                    );
+        } else {
+            snprintf(buf, sizeof(buf),
+                    " 目前顯示: 第 %02d~%02d 行",
+                    (int)(mf.lineno + 1),
+                    (int)(mf.lineno + mf.dispedlines)
+                    );
+        }
+    }
+    avail -= strlen(buf);
+    outs(buf);
+
+    // usually avail is still > 0 here...
+    if (avail <= 0)
+        return;
+
+    // prepare the part 3
+    outs(PMORE_COLOR_FOOTER3);
+
+    // use customizable footer if available
+    if (footer_handler)
+    {
+        footer_handler(progress, avail, ctx);
+        return;
+    } 
+
+    // part 3, help: context help and quit hotkeys
+#define PMORE_MSG_FOOTER_FLOAT_SHORT \
+    PMORE_COLOR_FOOTER3_KEY  "(h)"      \
+    PMORE_COLOR_FOOTER3_TEXT "按鍵說明 "
+
+#define PMORE_MSG_FOOTER_FLOAT_LONG \
+    PMORE_MSG_FOOTER_FLOAT_SHORT \
+    PMORE_COLOR_FOOTER3_KEY  "←[q]"    \
+    PMORE_COLOR_FOOTER3_TEXT "離開 "
+
+    // first try: long (context + quit)
+    w = PMORE_MACROSTRLEN(PMORE_MSG_FOOTER_FLOAT_LONG) -
+        PMORE_MACROSTRLEN(PMORE_COLOR_FOOTER3_KEY) *2 -
+        PMORE_MACROSTRLEN(PMORE_COLOR_FOOTER3_TEXT)*2;
+    if (avail >= w)
+    {
+        if (avail > w)
+            prints("%*s", avail-w, "");
+        outs(PMORE_MSG_FOOTER_FLOAT_LONG);
+        return;
+    }
+
+    // next try: short 4 only (quit)
+    w = PMORE_MACROSTRLEN(PMORE_MSG_FOOTER_FLOAT_SHORT) -
+        PMORE_MACROSTRLEN(PMORE_COLOR_FOOTER3_KEY) *1 -
+        PMORE_MACROSTRLEN(PMORE_COLOR_FOOTER3_TEXT)*1;
+    if (avail >= w)
+    {
+        if (avail > w)
+            prints("%*s", avail-w, "");
+        outs(PMORE_MSG_FOOTER_FLOAT_SHORT);
+        return;
+    }
+
+    // final: simply fill the extra space.
+    prints("%*s", avail, "");
+}
+
 /* --------------------- MAIN PROCEDURE ------------------------- */
+
+/*
+ * sub-system prototype
+ */
 MFPROTO void pmore_Preference();
 MFPROTO void pmore_QuickRawModePref();
-// MFPROTO void pmore_Help();
 
 #ifdef PMORE_USE_INTERNAL_HELP
-static const char    * const pmore_help[] = {
-    "\0piaip's more: pmore 2007 瀏覽程式使用說明",
-    "\01游標移動",
-    "(k/↑) (j/↓/Enter)   上捲/下捲一行",
-    "(^B/PgUp/BackSpace)   上捲一頁",
-    "(^F/PgDn/Space/→)    下捲一頁",
-    "(,/</S-TAB)(./>/TAB)  左/右捲動",
-    "(0/g/Home) ($/G/End)  檔案開頭/結尾",
-    "數字鍵 1-9 (;/:)      跳至輸入的頁數或行數",
-    "\01進階瀏覽",
-    "(/)  (s)              搜尋關鍵字/切換至其它看板",
-    "(n/N)                 重複正/反向搜尋",
-    "(f/b)                 跳至下/上篇",
-    "(a/A)                 跳至同一作者下/上篇",
-    "(t/[-/]+)             主題式瀏覽: 循序/前/後篇",
-    "\01其他",
-
-    // the line below is already aligned, because of the backslash.
-   "(o)/(\\)               選項設定/色彩顯示模式",
-
-#if defined (PMORE_USE_ASCII_MOVIE) || defined(RET_DOCHESSREPLAY)
-    "(p)/(z)               播放動畫/棋局打譜",
-#endif // defined(PMORE_USE_ASCII_MOVIE) || defined(RET_DOCHESSREPLAY)
-#ifdef RET_COPY2TMP
-    "(Ctrl-T)              存入暫存檔",
+MFPROTO void pmore_Help(void *ctx, int (*help_handler)(int y, void *ctx));
 #endif
-    "(q/←) (h/H/?/F1)     結束/本說明畫面",
-#ifdef DEBUG
-    "(d)                   切換除錯(debug)模式",
-#endif
-    NULL
-};
-#endif // PMORE_USE_INTERNAL_HELP
 
 /*
  * pmore utility macros
@@ -1987,8 +2290,13 @@ PMORE_UINAV_FORWARDLINE()
 /*
  * piaip's more, a replacement for old more
  */
-int 
-pmore(const char *fpath, int promptend)
+int
+pmore2( 
+        const char *fpath, int promptend, void *ctx,
+        int (*key_handler)   (int key, void *ctx),
+        int (*footer_handler)(int ratio, int width, void *ctx),
+        int (*help_handler)  (int y,   void *ctx)
+      )
 {
     int flExit = 0, retval = 0;
     int ch = 0;
@@ -2051,7 +2359,21 @@ pmore(const char *fpath, int promptend)
                 mf_determinemaxdisps(0, 0); // display until last line
                 mf_movieNextFrame();
                 MFDISP_DIRTY();
+
+#ifdef PMORE_AUTOEXIT_FIRSTPAGE
+                // XXX a special case is 'random one frame then stop'. 
+                // let's workaround for it.
+                if (mfmovie.mode == MFDISP_MOVIE_YES)
+                {
+                    // re-display the page again!
+                    mfmovie.mode = MFDISP_MOVIE_PLAYING;
+                    mf_display(); 
+                    RESET_MOVIE();
+                    break;
+                }
+#endif
                 continue;
+
             } else if (mfmovie.mode != MFDISP_MOVIE_PLAYING)
 #endif
 #ifndef PMORE_AUTOEXIT_FIRSTPAGE
@@ -2102,8 +2424,7 @@ pmore(const char *fpath, int promptend)
                         continue;
                     }
                     /* else, we have to clean up. */
-                    move(b_lines, 0);
-                    clrtoeol();
+                    pmore_clrtoeol(b_lines, 0);
                 }
                 break;
 
@@ -2118,7 +2439,7 @@ pmore(const char *fpath, int promptend)
                 refresh();
 
                 if(mf_movieSyncFrame())
-				{
+                {
                     /* user did not hit anything.
                      * play next frame.
                      */
@@ -2138,7 +2459,7 @@ pmore(const char *fpath, int promptend)
                         }
                     }
                     else if(mfmovie.mode == MFDISP_MOVIE_PLAYING_OLD)
-					{
+                    {
                         if(mf_viewedAll())
                         {
                             mfmovie.mode = MFDISP_MOVIE_NO;
@@ -2176,263 +2497,48 @@ pmore(const char *fpath, int promptend)
         }
 #endif
 
-        /* PRINT BOTTOM STATUS BAR */
-#ifdef DEBUG
-        if(debug)
-        {
-            /* in debug mode don't print ANSI codes
-             * because themselves are buggy.
-             */
-            prints("L#%ld(w%ld,lp%ld) pmt=%d Dsp:%08X/%08X/%08X, "
-                    "F:%08X/%08X(%d) tScr(%dx%d)",
-                    mf.lineno, mf.wraplines, mf.lastpagelines,
-                    promptend,
-                    (unsigned int)mf.disps, 
-                    (unsigned int)mf.maxdisps,
-                    (unsigned int)mf.dispe,
-                    (unsigned int)mf.start, (unsigned int)mf.end,
-                    (int)mf.len,
-                    t_columns,
-                    t_lines
-                  );
-        }
-        else
-#endif
-        {
-            char *printcolor;
-
-            char buf[256];      // orz
-            int prefixlen = 0;
-            int barlen = 0;
-            int postfix1len = 0, postfix2len = 0;
-
-            int progress  = 
-                (int)((unsigned long)(mf.dispe-mf.start) * 100 / mf.len);
-            /*
-             * page determination is hard.
-             * should we use starting line, or finishing line?
-             */
-            int nowpage = 
-                (int)((mf.lineno + mf.dispedlines/2) / MFNAV_PAGE)+1;
-            int allpages = -1; /* unknown yet */
-            if (mf.maxlinenoS >= 0)
-            {
-                allpages = 
-                (int)((mf.maxlinenoS + mf.lastpagelines -
-                       ((bpref.separator & MFDISP_SEP_WRAP) &&
-                        (fh.lines >= 0) ? 0:1)) / MFNAV_PAGE)+1;
-                if (mf.lineno >= mf.maxlinenoS || nowpage > allpages)
-                    nowpage = allpages;
-                /*
-                    nowpage = 
-                        (int)((mf.lineno + mf.dispedlines-2) / MFNAV_PAGE)+1 ;
-                        */
-            }
-            /* why -2 and -1?
-             * because we want to determine by nav_page,
-             * and mf.dispedlines is based on disp_page (nav_page+1)
-             * mf.lastpagelines is based on nav_page
-             */
-
-            if(mf_viewedAll())
-                printcolor = PMORE_COLOR_FOOTER1_VIEWALL;
-            else if (mf_viewedNone())
-                printcolor = PMORE_COLOR_FOOTER1_VIEWNONE;
-            else
-                printcolor = PMORE_COLOR_FOOTER1;
-
-            outs(ANSI_RESET);
-            outs(printcolor);
-
-            if(bpref.oldstatusbar)
-            {
-
-                prints("  瀏覽 P.%d(%d%%)  %s  %-30.30s%s",
-                        nowpage,
-                        progress,
-                        PMORE_COLOR_FOOTER3, 
-                        PMORE_COLOR_FOOTER3_KEY "(h)" 
-                        PMORE_COLOR_FOOTER3_TEXT "求助  "
-                        PMORE_COLOR_FOOTER3_KEY  "→↓[PgUp][",
-                        "PgDn][Home][End]"
-                        PMORE_COLOR_FOOTER3_TEXT "游標移動  "
-                        PMORE_COLOR_FOOTER3_KEY  "←[q]"
-                        PMORE_COLOR_FOOTER3_TEXT "結束   ");
-
-            } else {
-
-                // part 1, brief report
-                if(allpages >= 0)
-                    sprintf(buf,
-                            "  瀏覽 第 %1d/%1d 頁 (%3d%%) ",
-                            nowpage,
-                            allpages,
-                            progress
-                           );
-                else
-                    sprintf(buf,
-                            "  瀏覽 第 %1d 頁 (%3d%%) ",
-                            nowpage,
-                            progress
-                           );
-                outs(buf); prefixlen += strlen(buf);
-
-                // part 2, status report
-                outs(PMORE_COLOR_FOOTER2);
-                if(override_msg)
-                {
-                    buf[0] = 0;
-                    if(override_attr) outs(override_attr);
-                    snprintf(buf, sizeof(buf), override_msg);
-                    RESET_OVERRIDE_MSG();
-                }
-                else
-                if(mf.xpos > 0)
-                {
-                    snprintf(buf, sizeof(buf),
-                            " 顯示範圍: %d~%d 欄位, %02d~%02d 行",
-                            (int)mf.xpos+1, 
-                            (int)(mf.xpos + t_columns-(mf.trunclines ? 2 : 1)),
-                            (int)(mf.lineno + 1),
-                            (int)(mf.lineno + mf.dispedlines)
-                           );
-                } else {
-                    snprintf(buf, sizeof(buf),
-                            " 目前顯示: 第 %02d~%02d 行",
-                            (int)(mf.lineno + 1),
-                            (int)(mf.lineno + mf.dispedlines)
-                           );
-                }
-
-                outs(buf); prefixlen += strlen(buf);
-
-                postfix1len = 12;       // check msg below
-                postfix2len = 10;
-
-#ifdef PMORE_USE_REPLYKEY_HINTS
-                if(mf_viewedAll()) postfix1len = 17;
-#endif // PMORE_USE_REPLYKEY_HINTS
-
-                if (prefixlen + postfix1len + postfix2len + 1 > t_columns)
-                {
-                    postfix1len = 0;
-                    // try again
-                    if (prefixlen+postfix1len+postfix2len + 1 > t_columns)
-                        postfix2len = 0;
-                }
-                barlen = t_columns - 1 - postfix1len - postfix2len - prefixlen;
-
-                while(barlen-- > 0)
-                    outc(' ');
-
-                // part 3, floating help
-                outs(PMORE_COLOR_FOOTER3);
-                if(postfix1len > 0)
-                    outs(
-#ifdef PMORE_USE_REPLYKEY_HINTS
-                        mf_viewedAll() ?
-                            PMORE_COLOR_FOOTER3_KEY  "(y)" 
-                            PMORE_COLOR_FOOTER3_TEXT "回應"
-                            PMORE_COLOR_FOOTER3_KEY  "(X/%)" 
-                            PMORE_COLOR_FOOTER3_TEXT "推文 "
-                        :
-#endif // PMORE_USE_REPLYKEY_HINTS
-                            PMORE_COLOR_FOOTER3_KEY  "(h)" 
-                            PMORE_COLOR_FOOTER3_TEXT "按鍵說明 "
-                        );
-                if(postfix2len > 0)
-                    outs(
-                            PMORE_COLOR_FOOTER3_KEY  "←[q]" 
-                            PMORE_COLOR_FOOTER3_TEXT "離開 "
-                        );
-            }
-            outs(ANSI_RESET);
-            FORCE_CLRTOEOL();
-        }
+        /* PRINT FOOTER */
+        mf_display_footer(footer_handler, ctx);
+        outs(ANSI_RESET);
+        FORCE_CLRTOEOL();
 
         /* vkey() will do refresh(); */
         ch = vkey();
-        switch (ch) {
-            /* -------------- NEW EXITING KEYS ------------------ */
-#ifdef RET_DOREPLY
-            case 'r': case 'R':
-                flExit = 1,     retval = RET_DOREPLY;
-                break;
-            case 'Y': case 'y':
-                flExit = 1,     retval = RET_DOREPLYALL;
-                break;
-#endif
-#ifdef RET_DORECOMMEND
-                // recommend
-            case '%':
-            case 'X':
-                flExit = 1,     retval = RET_DORECOMMEND;
-                break;
-#endif
-#ifdef RET_DOQUERYINFO
-            case 'Q': // info query interface
-                flExit = 1,     retval = RET_DOQUERYINFO;
-                break;
-#endif
-#ifdef RET_DOSYSOPEDIT
-            case 'E':
-                flExit = 1,     retval = RET_DOSYSOPEDIT;
-                break;
-#endif
-#ifdef RET_DOCHESSREPLAY
-            case 'z':
-                flExit = 1,     retval = RET_DOCHESSREPLAY;
-                break;
-#endif 
-#ifdef RET_COPY2TMP
-            case Ctrl('T'):
-                flExit = 1,     retval = RET_COPY2TMP;
-                break;
-#endif
-#ifdef RET_SELECTBRD
-            case 's':
-                flExit = 1,     retval = RET_SELECTBRD;
-                break;
-#endif
-            /* ------- SOB THREADED NAVIGATION EXITING KEYS ------- */
 
-#ifdef PMORE_USE_SOB_THREAD_NAV
-                // I'm not sure if these keys are all invented by SOB,
-                // but let's honor their names.
-                // Kaede, Raw, Izero, woju - you are all TWBBS heroes  
-                //                                  -- by piaip, 2008.
-            case 'A':
-                flExit = 1,     retval = AUTHOR_PREV;
-                break;
-            case 'a':
-                flExit = 1,     retval = AUTHOR_NEXT;
-                break;
-            case 'F': case 'f':
-                flExit = 1,     retval = READ_NEXT;
-                break;
-            case 'B': case 'b':
-                flExit = 1,     retval = READ_PREV;
-                break;
+        // first, try custom key_handler
+        if (key_handler)
+        {
+            int r = key_handler(ch, ctx);
+            switch(r)
+            {
+                case -1:
+                    // common return value of 'file not exist',
+                    // meaning 'bypassing this key' here.
+                    continue;
+
+                case 0:
+                    // common return value of 'do nothing', 
+                    // meaning 'continue processing this key' here.
+                    break;
+
+                default:
+                    // for all other cases, looks like handler wants us to quit.
+                    retval = r;
+                    flExit = 1;
+                    continue;
+            }
+        }
+
+        // built-in navigation keys
+        switch (ch) {
+
+            /* ------------------ EXITING KEYS --------------------- */
             case KEY_LEFT:
                 flExit = 1,     retval = FULLUPDATE;
                 break;
             case 'q':
                 flExit = 1,     retval = FULLUPDATE;
                 break;
-
-                /* from Kaede, thread reading */
-            case ']':
-            case '+':
-                flExit = 1,     retval = RELATE_NEXT;
-                break;
-            case '[':
-            case '-':
-                flExit = 1,     retval = RELATE_PREV;
-                break;
-            case '=':
-                flExit = 1,     retval = RELATE_FIRST;
-                break;
-#endif // PMORE_USE_SOB_THREAD_NAV
 
             /* ------------------ NAVIGATION KEYS ------------------ */
             /* Simple Navigation */
@@ -2471,7 +2577,6 @@ pmore(const char *fpath, int promptend)
             case 'G':
             case KEY_END:
                 mf_goBottom();
-
 #ifdef PMORE_ACCURATE_WRAPEND
                 /* allright. in design of pmore,
                  * it's possible that when user navigates to file end,
@@ -2479,13 +2584,12 @@ pmore(const char *fpath, int promptend)
                  */
                 mf_display();
                 invalidate = 0;
+                if(mf_viewedAll())
+                    break;
 
-                if(!mf_viewedAll())
-                {
-                    /* one more try. */
-                    mf_goBottom();
-                    invalidate = 1;
-                }
+                /* one more try. */
+                mf_goBottom();
+                invalidate = 1;
 #endif
                 break;
 
@@ -2572,7 +2676,9 @@ pmore(const char *fpath, int promptend)
                 else
                     PMORE_UINAV_FORWARDPAGE();
                 break;
-            /* ------------------ SEARCH  KEYS ------------------ */
+
+            /* ------------------ SEARCH AND GOTO --------------- */
+            /* Search */
             case '/':
                 {
                     char sbuf[81] = "";
@@ -2587,13 +2693,18 @@ pmore(const char *fpath, int promptend)
                             40, DOECHO);
 
                     if (sbuf[0]) {
-                        if (getdata(b_lines - 1, 0, "區分大小寫(Y/N/Q)? [N] ",
+                        if (getdata(b_lines - 1, 0, 
+                                    PMORE_MSG_SEARCH_LETTERCASE "[N] ", 
                                     ans, sizeof(ans), LCECHO) && *ans == 'y')
                             sr.cmpfunc = strncmp;
                         else if (*ans == 'q')
                             sbuf[0] = 0;
                         else
+#ifdef HAVE_DBCS_STRNCASECMP
+                            sr.cmpfunc = DBCS_strncasecmp;
+#else
                             sr.cmpfunc = strncasecmp;
+#endif
                     }
                     sr.len = strlen(sbuf);
                     if(sr.len) sr.search_str = (unsigned char*)strdup(sbuf);
@@ -2607,7 +2718,8 @@ pmore(const char *fpath, int promptend)
             case 'N':
                 mf_search(MFSEARCH_BACKWARD);
                 break;
-            /* ------------------ SPECIAL KEYS ------------------ */
+
+            /* Goto */
             case '1': case '2': case '3': case '4': case '5':
             case '6': case '7': case '8': case '9':
             case ';': case ':':
@@ -2621,8 +2733,7 @@ pmore(const char *fpath, int promptend)
                     pmore_clrtoeol(b_lines-1, 0);
                     getdata_buf(b_lines-1, 0, 
                             (pageMode ? 
-                             "跳至此頁(若要改指定行數請在結尾加.): " : 
-                             "跳至此行: "),
+                             PMORE_MSG_GOTO_PAGE : PMORE_MSG_GOTO_LINE),
                             buf, 8, DOECHO);
                     if(buf[0]) {
                         i = atoi(buf);
@@ -2635,36 +2746,14 @@ pmore(const char *fpath, int promptend)
                 }
                 break;
 
-#ifdef PMORE_USE_INTERNAL_HELP
-            case 'h': case 'H': 
-            case '?':
-#ifdef KEY_F1
-            case KEY_F1:
-#endif
-                // help
-                show_help(pmore_help);
-                MFDISP_DIRTY();
-                break;
-#endif // PMORE_USE_INTERNAL_HELP
-
-#ifdef  PMORE_NOTIFY_NEWPREF
-                //let's be backward compatible! (pmore 2005 keys)
-            case 'l':
-            case 'w':
-            case 'W':
-            case '|':
-                vmsg("這個按鍵已整合進新的設定 (o) 了");
-                break;
-
-#endif // PMORE_NOTIFY_NEWPREF
-
-            case '\\':  // everyone loves backslash, let's keep it.
-                pmore_QuickRawModePref();
-                MFDISP_DIRTY();
-                break;
-
+            /* --------------- PREFERENCE AND HELP -------------- */
+            /* preference */
             case 'o':
                 pmore_Preference();
+                MFDISP_DIRTY();
+                break;
+            case '\\':  // everyone loves backslash, let's keep it.
+                pmore_QuickRawModePref();
                 MFDISP_DIRTY();
                 break;
 /* 081229.cache: BBSRuby */
@@ -2683,6 +2772,25 @@ pmore(const char *fpath, int promptend)
                 break;
 #endif
 
+            /* internal help */
+#ifdef PMORE_USE_INTERNAL_HELP
+            case 'h': case 'H': case '?':
+#ifdef KEY_F1
+            case KEY_F1:
+#endif
+                pmore_Help(ctx, help_handler);
+                MFDISP_DIRTY();
+                break;
+#endif // PMORE_USE_INTERNAL_HELP
+
+            /* debug system */
+#ifdef DEBUG
+            case 'd':
+                debug = !debug;
+                MFDISP_DIRTY();
+                break;
+#endif
+            /* ------------------ MOVIE SYSTEM ------------------ */
 #ifdef PMORE_USE_ASCII_MOVIE
             case 'p':
                 /* play ascii movie again
@@ -2739,13 +2847,6 @@ pmore(const char *fpath, int promptend)
                 break;
 #endif
 
-#ifdef DEBUG
-            case 'd':
-                debug = !debug;
-                MFDISP_DIRTY();
-                break;
-#endif
-
 #ifndef PMORE_IGNORE_UNKNOWN_NAVKEYS
             default:
                 return ch;
@@ -2761,6 +2862,13 @@ pmore(const char *fpath, int promptend)
     return retval;
 }
 
+// backward compatible
+int 
+pmore(const char *fpath, int promptend)
+{
+    return pmore2(fpath, promptend, NULL, NULL, NULL, NULL);
+}
+
 // ---------------------------------------------------- Preference and Help
 
 MFPROTO void
@@ -2774,7 +2882,7 @@ pmore_prefEntry(
     int i = 23;
 
     // print key/text
-    outs(" " ANSI_COLOR(1;31)); //OPTATTR_NORMAL_KEY);
+    outs(" " PREFATTR_NORMAL_KEY);
     if (szKey < 0)  szKey = strlen(key);
     if (szKey > 0)  pmore_outns(key, szKey);
     outs(ANSI_RESET " ");
@@ -2797,14 +2905,14 @@ pmore_prefEntry(
         }
 
         if (i > 0)
-            outs(ANSI_COLOR(1;30) " |" ANSI_RESET); //OPTATTR_BAR " | " ANSI_RESET); 
+            outs(PREFATTR_BAR " |" ANSI_RESET);
 
         // test if option has hotkey
         if (*options && *options != '\t' && 
                 *(options+1) && *(options+1) == '.')
         {
             // found hotkey
-            outs(ANSI_COLOR(1;31)); //OPTATTR_NORMAL_KEY);
+            outs(PREFATTR_NORMAL_KEY);
             outc(*options);
             outs(ANSI_RESET);
             options +=2;
@@ -2812,7 +2920,7 @@ pmore_prefEntry(
 
         if (i == isel)
         {
-            outs(ANSI_COLOR(1;36) "*");// OPTATTR_SELECTED);
+            outs(PREFATTR_SELECTED "*");
         }
         else
             outc(' ');
@@ -2833,7 +2941,7 @@ pmore_PromptBar(const char *caption, int shadow)
 {
     int i = 0;
 
-    if (shadow)
+    if (shadow & PMORE_SHADOW_ABOVE)
     {
         outs(ANSI_COLOR(0;1;30));
         for(i = 0; i+2 < t_columns ; i+=2)
@@ -2848,6 +2956,14 @@ pmore_PromptBar(const char *caption, int shadow)
     for(i -= strlen(caption); i > 0; i--)
         outs(" ");
     outs(ANSI_RESET "\n");
+
+    if (shadow & PMORE_SHADOW_BELOW)
+    {
+        outs(ANSI_COLOR(0;1;30));
+        for(i = 0; i+2 < t_columns ; i+=2)
+            outs("▔");
+        outs(ANSI_RESET "\n");
+    }
 }
 
 MFPROTO void
@@ -2858,24 +2974,23 @@ pmore_QuickRawModePref()
 #ifdef HAVE_GRAYOUT
     grayout(0, ystart-1, GRAYOUT_DARK);
 #endif // HAVE_GRAYOUT
-    /* 090127.cache: 使用 M3 的 淡入淡出特效 */
+/* 090127.cache: 使用 M3 的 淡入淡出特效 */
 #ifdef M3_USE_PFTERM
 #else
     grayout(GRAYOUT_DARK);
 #endif 
- 
+
     while(1)
     {
         move(ystart, 0);
         clrtobot();
-        pmore_PromptBar(PMORE_MSG_PREF_TITLE_QRAW, 0);
+        pmore_PromptBar(PMORE_MSG_PREF_TITLE_QRAW, PMORE_SHADOW_NONE);
 
         // list options
         pmore_prefEntry(bpref.rawmode,
-                "\\", 1, "色彩顯示方式:", -1,
-                "1.預設格式化內容\t2.原始ANSI控制碼\t3.純文字");
+                "\\", 1, PMORE_MSG_QPREF_SUBJECT, -1, PMORE_MSG_QPREF_OPTIONS);
 
-        switch(vmsg("請調整設定 (1-3 可直接選定，\\可切換) 或其它任意鍵結束。"))
+        switch(vmsg( PMORE_MSG_QPREF_PROMPT ))
         {
             case '\\':
                 bpref.rawmode = (bpref.rawmode+1) % MFDISP_RAW_MODES;
@@ -2912,12 +3027,6 @@ pmore_Preference()
     grayout(0, ystart-1, GRAYOUT_DARK);
 #endif // HAVE_GRAYOUT
 
-#ifdef M3_USE_PFTERM
-#else
-    /* 090127.cache: 使用 M3 的 淡入淡出特效 */
-    grayout(GRAYOUT_DARK);
-#endif
-
     // workaround some poor terms: their clrtobot() refresh is buggy.
 #ifdef PMORE_USING_POOR_TERM
     {
@@ -2935,9 +3044,10 @@ pmore_Preference()
     {
         move(ystart, 0);
         clrtobot();
-        pmore_PromptBar(PMORE_MSG_PREF_TITLE, 1);
+        pmore_PromptBar(PMORE_MSG_PREF_TITLE, PMORE_SHADOW_ABOVE);
         outs("\n");
 
+        // TODO move these strings to localization section...
         // list options
         pmore_prefEntry(bpref.rawmode,
                 "\\", 1, "色彩顯示方式:", -1,
@@ -2989,15 +3099,110 @@ pmore_Preference()
     }
 }
 
-/*
+#ifdef PMORE_USE_INTERNAL_HELP
+
+// apply system colors if defined
+#ifndef HLP_CATEGORY_COLOR
+#define HLP_CATEGORY_COLOR	PMHLPATTR_HEADER
+#endif
+#ifndef HLP_DESCRIPTION_COLOR
+#define HLP_DESCRIPTION_COLOR	PMHLPATTR_NORMAL
+#endif
+#ifndef HLP_KEYLIST_COLOR
+#define HLP_KEYLIST_COLOR	PMHLPATTR_NORMAL_KEY
+#endif
+
+static const char 
+*hlp_basic[] = {
+    "【基本移動】", NULL,
+    "  下翻一頁", "^F → PgUp Space",
+    "  上翻一頁", "^B ^H PgDn BS",
+    "  下捲一行", " j ↓",
+    "  上捲一行", " k ↑",
+    "  檔案結尾", " $ G  End",
+    "  檔案開頭", " 0 g  Home",
+    "  離開    ", " q ←",
+    NULL,
+},
+*hlp_adv[] = {
+    "【進階瀏覽】", NULL,
+    "  搜尋關鍵字", "/",
+    "  往後搜尋  ", "n",
+    "  往前搜尋  ", "N",
+    "  指定頁數  ", ";  0-9數字鍵",
+    "  指定行數  ", ":",
+    "  向右捲動  ", ". > TAB",
+    "  向左捲動  ", ", < Shift-TAB",
+    NULL,
+},
+*hlp_sys[] = {
+    "【其它】", NULL,
+#ifdef PMORE_USE_ASCII_MOVIE
+    "  播放動畫    ", "p",
+#endif
+    "  選項設定    ", "o",
+    "  色彩顯示模式", "\\",
+    "  說明        ", "h ? F1",
+#ifdef DEBUG
+    "  DBG 除錯模式", "d",
+#endif
+    NULL,
+};
+
+#define PMHLP_BLOCKS    (3)
+
 MFPROTO void
-pmore_Help()
+pmore_Help(void *ctx, int (*help_handler)(int y, void *ctx))
 {
+    const char **t_tables[PMHLP_BLOCKS] = { hlp_basic, hlp_adv, hlp_sys};
+    const int  col_widths[PMHLP_BLOCKS] = { 29, 27, 20 }, 
+               l_widths  [PMHLP_BLOCKS] = { 12, 13, 15 };  
+    const int n_t_tables =PMHLP_BLOCKS;
+    int i, incomplete;
+    int y = 2; // height of prompt bar
+
     clear();
-    vs_hdr("pmore 使用說明");
-    vmsg("");
+    pmore_PromptBar(PMORE_MSG_HELP_TITLE, PMORE_SHADOW_BELOW);
+    do 
+    {
+        incomplete = n_t_tables;
+        y++;
+	for (i = 0; i < n_t_tables; i++)
+	{
+	    const char *lvar = NULL, *rvar = "";
+	    if (*t_tables[i])
+	    {
+		lvar = *t_tables[i]++;
+		rvar = *t_tables[i]++;
+	    }
+	    if (!rvar) { // draw category
+                prints(HLP_CATEGORY_COLOR "%-*s", col_widths[i], lvar);
+		continue;
+	    } 
+	    if (!lvar) { // table is complete...
+		incomplete --;
+		lvar = "";
+	    }
+	    // draw table body
+            prints( HLP_DESCRIPTION_COLOR "%-*s"
+                    HLP_KEYLIST_COLOR     "%-*s",
+                    l_widths[i], lvar,
+                    col_widths[i]-l_widths[i], rvar);
+	}
+	outc('\n');
+    } while (incomplete);
+    
+    // show additional help information
+    if (help_handler)
+        help_handler(y, ctx);
+    else
+#ifdef  PRESSANYKEY
+        PRESSANYKEY();
+#else
+        vmsg(PMORE_MSG_HELP_PAUSE);
+#endif
 }
-*/
+#endif // PMORE_USE_INTERNAL_HELP
 
 // ---------------------------------------------------- Extra modules
 
@@ -3041,7 +3246,7 @@ mf_str2float(unsigned char *p, unsigned char *end, float *pf)
  * override if you have better methods.
  */
 MFPROTO int 
-pmore_wait_key(struct timeval *ptv, int dorefresh)
+mf_movieWaitKey(struct timeval *ptv, int dorefresh)
 {
     int sel = 0;
     fd_set readfds;
@@ -3124,7 +3329,7 @@ mf_moviePromptPlaying(int type)
     if (type) 
     {
         outs(ANSI_RESET ANSI_COLOR(1;34;47));
-        s = " >> 請輸入選項:  (互動式動畫播放中，可按 q 或 Ctrl-C 中斷)";
+        s = PMORE_MSG_MOVIE_INTERACTION_WAITSEL;
     } 
     else if (mfmovie.interactive)
     {
@@ -3350,11 +3555,9 @@ mf_movieGotoNamedFrame(const unsigned char *name, const unsigned char *end)
     while (p < end && isalnum(*p))
         p++;
     sz = p - name;
-
     if (sz < 1) return 0;
 
     // now search entire file for frame
-
     mf_goTop();
 
     do
@@ -3417,6 +3620,30 @@ mf_movieGotoFrame(int fno, int relative)
         }
     }
     return 1;
+}
+
+// warning: getting current frame number is SLOW.
+MFPROTO int
+mf_movieCurrentFrameNo()
+{
+    int no = 0;
+    unsigned char *p = mf.disps;
+    mf_goTop();
+
+    do
+    {
+       if ( mf_movieFrameHeader(mf.disps, mf.end))
+           no++;
+
+       if (mf.disps >= p)
+           break;
+
+       if (mf_forward(1) < 1)
+           break;
+
+    } while ( 1 ); // mf.disps < p);
+
+    return no;
 }
 
 MFPROTO int
@@ -3503,10 +3730,20 @@ mf_movieExecuteOffsetCmd(unsigned char *s, unsigned char *end)
                 // newno starts from 1
                 if (newno <= 0)
                     return 0;
+
+                // XXX this is dropping performance... 
+                // need to optimize again someday.
+                // XXX by the odisps design in mf_movieNextFrame,
+                // we seems don't really need this...
+                // Prevent endless loop
+                // if (mf_movieCurrentFrameNo() == newno)
+                //     return 0;
             }
             return mf_movieGotoFrame(newno, curr);
 
         case ':':
+            // XXX need to handle endless loop case
+            
             // by names
             return mf_movieGotoNamedFrame(s+1, end);
 
@@ -3518,6 +3755,11 @@ mf_movieExecuteOffsetCmd(unsigned char *s, unsigned char *end)
 }
 
 
+/* mf_movieOptionHandler()
+ * @return 1:  option executed
+ * @return 0:  duration timeout
+ * @return -1: invalid option
+ */
 MFPROTO int 
 mf_movieOptionHandler(unsigned char *opt, unsigned char *end)
 {
@@ -3718,7 +3960,7 @@ mf_movieOptionHandler(unsigned char *opt, unsigned char *end)
             mfmovie.optkeys = NULL;
 
             mf_float2tv(optclk, &tv);
-            c = pmore_wait_key(&tv, 1);
+            c = mf_movieWaitKey(&tv, 1);
             mfmovie.optkeys = tmpopt;
 
             // if timeout, drop.
@@ -3771,6 +4013,10 @@ mf_movieOptionHandler(unsigned char *opt, unsigned char *end)
     outs(ANSI_RESET); // required because options bar may be not closed
     pmore_clrtoeol(b_lines, 0);
 
+    // if the syntax has error...
+    if (!maxsel)
+        return -1;
+
 #ifdef DEBUG
     prints("selection: %d\n", isel);
     vkey();
@@ -3778,9 +4024,11 @@ mf_movieOptionHandler(unsigned char *opt, unsigned char *end)
 
     // Execute Selection
     if (!cmd || !szCmd)
-        return 0;
+        return -1;
 
-    return mf_movieExecuteOffsetCmd(cmd, cmd+szCmd);
+    // XXX check return value of mf_movieExecuteOffsetCmd someday?
+    mf_movieExecuteOffsetCmd(cmd, cmd+szCmd);
+    return 1;
 }
 
 /*
@@ -3797,8 +4045,8 @@ mf_movieSyncFrame()
     {
         int c = 0;
         mfmovie.pause = 0;
-//        c = out_footer(PMORE_MSG_MOVIE_PAUSE);
-        c = vkey();
+        //c = vmsg(PMORE_MSG_MOVIE_PAUSE);
+		c = vkey();
 /* 090302.cache: 取消 ^LP 會顯示 vmsg 跳出閱讀的問題 */
         if (mf_movieIsSystemBreak(c))
             return 0;
@@ -3808,10 +4056,14 @@ mf_movieSyncFrame()
     {
         unsigned char *opt = mfmovie.options;
         mfmovie.options = NULL;
-        mf_movieOptionHandler(opt, mf.end);
-        return 1;
+        // if executed of timeout, go for next.
+        if (mf_movieOptionHandler(opt, mf.end) != -1)
+            return 1;
+        // invalid syntax or not executed...
+        // let's treat it as normal frame.
     }
-    else if (mfmovie.synctime.tv_sec > 0)
+
+    if (mfmovie.synctime.tv_sec > 0)
     {
         /* synchronize world timeline model */
         struct timeval dv;
@@ -3827,14 +4079,14 @@ mf_movieSyncFrame()
         if(dv.tv_sec < 0)
             return 1;
 
-        return !pmore_wait_key(&dv, 0);
+        return !mf_movieWaitKey(&dv, 0);
     } else {
         /* synchronize each frame clock model */
         /* because Linux will change the timeval passed to select,
          * let's use a temp value here.
          */
         struct timeval dv = mfmovie.frameclk;
-        return !pmore_wait_key(&dv, 0);
+        return !mf_movieWaitKey(&dv, 0);
     }
 }
 
@@ -3868,6 +4120,50 @@ mf_movieProcessCommand(unsigned char *p, unsigned char *end)
             MOVIECMD_SKIP_ALL(p,end);
             return p;
  
+        }
+        else if (*p == 'I')
+        {
+            // INTERRUPT
+            // Syntax: Icmd_from,cmd_to
+            // Jump cmd_from, and execute until cmd_to, 
+            // then back here for next frame.
+            unsigned char *pfs, *pfe, *pts, *pte;
+            int curr_fno;
+            
+            mfmovie.intr_src = NULL;
+            mfmovie.intr_dest_frame = 0;
+
+            // find parameters
+            pfs = pfe = p+1;
+            while (pfe < end && *pfe > ' ' && *pfe != ',')
+                pfe++;
+            pts = pte = pfe+1;
+            while (pte < end && *pte > ' ' && *pte != ',')
+                pte++;
+            // check syntax 
+            if ( pfe >= end || *pfe != ',' || 
+                 pts >= end)
+            {
+                MOVIECMD_SKIP_ALL(p,end);
+                return p;
+            }
+
+            // get the address of next frame
+            curr_fno = mf_movieCurrentFrameNo();
+            mfmovie.intr_dest_frame = curr_fno +1;
+
+            // find interrupt source (cmd_to)
+            mf_movieExecuteOffsetCmd(pts, pte);
+            mfmovie.intr_src  = mf.disps;
+
+            // final execution
+            mf_movieGotoFrame(curr_fno, 0);
+            mf_movieExecuteOffsetCmd(pfs, pfe);
+
+            // XXX what if jump to same location?
+
+            MOVIECMD_SKIP_ALL(p,end);
+            return p;
         }
         else if (*p == 'G') 
         {
@@ -3963,18 +4259,19 @@ mf_movieProcessCommand(unsigned char *p, unsigned char *end)
             // =  -> compat24
             // -  -> ?
             // == -> ?
-            p++;
-            if (p >= end)
+            if (++p >= end)
                 return end;
             if (*p == '=')
             {
                 mfmovie.mode = MFDISP_MOVIE_PLAYING_OLD;
                 mfmovie.compat24 = 1;
-                p++;
+                if (++p >= end)
+                    return end;
             }
             // MFDISP_SKIPCURLINE();
-            return p+1;
+            return p;
         } 
+#if 0
         else if (*p == 'L') 
         {
             // LOOP
@@ -3982,6 +4279,7 @@ mf_movieProcessCommand(unsigned char *p, unsigned char *end)
             // m times to backward n
             break;
         } 
+#endif
         else 
         {
             // end of known control codes
@@ -4003,6 +4301,15 @@ mf_movieNextFrame()
             float nf = 0;
             unsigned char *odisps = mf.disps;
             
+            // check if we reached interrupt breakpoint
+            if (odisps == mfmovie.intr_src)
+            {
+                mfmovie.intr_src = NULL;
+                mf_movieGotoFrame(mfmovie.intr_dest_frame, 0);
+                mfmovie.intr_dest_frame = 0;
+                continue;
+            }
+
             /* process leading */
             p = mf_movieProcessCommand(p, mf.end);
 
@@ -4013,9 +4320,12 @@ mf_movieNextFrame()
                 // support at least one frame pause
                 // to allow user break
                 struct timeval tv;
+                int c;
                 mf_float2tv(MOVIE_MIN_FRAMECLK, &tv);
 
-                if (pmore_wait_key(&tv, 0))
+                c = mf_movieWaitKey(&tv, 0);
+
+                if (c)
                 {
                     STOP_MOVIE();
                     return 0;
@@ -4038,10 +4348,15 @@ mf_movieNextFrame()
             }
 
             if (mfmovie.mode != MFDISP_MOVIE_PLAYING_OLD)
-                mf_forward(1);
+            {
+                // when the movie frame header is the last line...
+                // we need to check forward() to prevent endless loop.
+                if (mf_forward(1) <= 0)
+                    break;
+            }
 
             return 1;
-		}
+        }
 
         if (mf_forward(1) <= 0)
             break;
@@ -4051,5 +4366,5 @@ mf_movieNextFrame()
 }
 #endif
 
-/* vim:sw=4:ts=8:expandtab:nofoldenable
+/* vim:sw=4:ts=8:et:nofoldenable
  */
