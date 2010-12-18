@@ -664,29 +664,7 @@ enum MFSEARCH_DIRECTION {
 int
 expand_esc_star(char *buf, const char *src, int szbuf)
 {
-    assert(*src == KEY_ESC && *(src+1) == '*');
-    src += 2;
-    switch(*src)
-    {
-        // secure content (return 1)
-        case 't':   // current time.
-            strlcpy(buf, Now(), szbuf);
-            return 1;
-        // insecure content (return 2)
-        case 's':   // current user id
-            strlcpy(buf, cuser.userid, szbuf);
-            return 2;
-        case 'l':   // current user logins
-            snprintf(buf, szbuf, "%d", cuser.numlogins);
-            return 2;
-        case 'p':   // current user posts
-            snprintf(buf, szbuf, "%d", cuser.numposts);
-            return 2;
-    }
-
-    // unknown characters, return from star.
-    strlcpy(buf, src-1, szbuf);
-    return 0;
+    return expand_esc_star_visio( buf, src, szbuf);
 }
 
 #endif // defined(PMORE_EXPAND_ESC_STAR) && !defined(HAVE_EXPAND_ESC_STAR)
