@@ -57,7 +57,7 @@
 #include "ufo.h"		/* user flag option */
 #include "battr.h"		/* board attribution */
 #include "modes.h"		/* The list of valid user modes */
-#include "modes2.h"             /* Some definition for pmore */
+//#include "modes2.h"             /* Some definition for pmore */
 #include "struct.h"		/* data structure */
 #include "global.h"		/* global variable & definition */
 #include "theme.h"		/* custom theme */

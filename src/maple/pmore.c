@@ -274,6 +274,7 @@
  #define RELATE_NEXT ']'
  #define READ_NEXT   'j'
  #define READ_PREV   'k'
+ #define FULLUPDATE 1
  #if !defined(FULLUPDATE) && defined(XO_HEAD)
  # define FULLUPDATE XO_HEAD
  #endif
@@ -1751,7 +1752,7 @@ mf_display()
                         char *pbuf = buf;
 
                         memcpy(buf, mf.dispe, 9);  // ^[*s
-                        mf.dispe += (mf.dispe[2] == 'T') ? 8 : 2; /* FinFunnel: 遇到倒數要跳多一點 */
+                        mf.dispe += (mf.dispe[2] == 'T') ? 8 : 2;
 
                         if(bpref.rawmode)
                             buf[0] = '*';
