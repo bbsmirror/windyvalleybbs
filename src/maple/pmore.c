@@ -1744,14 +1744,14 @@ mf_display()
                         int i;
 
                         // the max esc_star sequence in your system
-                        char esbuf[4]= "";  
+                        char esbuf[10]= ""; /* FinFunnel: 倒數計時需要用到大的size */ 
 
                         // the max expanded size of esc_star.
                         char buf[64] = "" ; 
                         char *pbuf = buf;
 
-                        memcpy(buf, mf.dispe, 3);  // ^[*s
-                        mf.dispe += 2;
+                        memcpy(buf, mf.dispe, 9);  // ^[*s
+                        mf.dispe += (mf.dispe[2] == 'T') ? 8 : 2; /* FinFunnel: 遇到倒數要跳多一點 */
 
                         if(bpref.rawmode)
                             buf[0] = '*';
