@@ -1752,7 +1752,7 @@ mf_display()
                         char *pbuf = buf;
 
                         memcpy(buf, mf.dispe, 9);  // ^[*s
-                        mf.dispe += (mf.dispe[2] == 'T') ? 8 : 2;
+                        mf.dispe += (mf.dispe[2] == 'T') ? 8 : 2; /* FinFunnel: 根據是否為倒數決定要跳(控制碼)多少字元 */
 
                         if(bpref.rawmode)
                             buf[0] = '*';
