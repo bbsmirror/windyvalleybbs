@@ -9,11 +9,14 @@
 
 #include "bbs.h"
 
-
 /* #define	VE_WIDTH	(ANSILINELEN - 1) */
 /* Thor.990330: 為防止引言後, ">"要變色, 一行會超過ANSILINELEN, 故多留空間 */
 /* itoc.010317.註解: 那麼實際一列可以放下的有效字數為 VE_WIDTH - 3 */
 #define	VE_WIDTH	(ANSILINELEN - 11)
+
+#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
+void syn_pmore_render(char *os, int len, char *buf);
+#endif
 
 
 typedef struct textline
@@ -775,7 +778,7 @@ input_tools()   /* itoc.000319: 符號輸入工具 */
 
     {	/* 4.圖案數字 */
       "○●△▲◎☆◇◆□■"
-      "▽▼㊣⊕⊙十卄卅♂♀"
+      "▽▼㊣⊕⊙十卄卅♂♀"
       "０１２３４５６７８９"
       "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ"
       "けげこごさざしじすず"
@@ -1642,28 +1645,57 @@ ve_filer(fpath, ve_op)
 /* ----------------------------------------------------- */
 /* 螢幕處理：輔助訊息、顯示編輯內容			 */
 /* ----------------------------------------------------- */
-
-
+/* FinFunnel: ESC控制碼上色以讓使用者能夠辨認 * 和ESC。目前借ptt的code讓pmore語法上色 */
 static void
 ve_outs(text)
   uschar *text;
 {
   int ch;
-  uschar *tail;
+  uschar *tail, *start = text;
+#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
+  char movie_attrs[VE_WIDTH+10] = {0};
+  char *pmattr = movie_attrs, mattr = 0;
 
+  syn_pmore_render((char*)text, strlen(text), movie_attrs);
+  if (*movie_attrs)
+	  outs("\033[0;36m");
+#endif
+  
   tail = text + SCR_WIDTH;
   while (ch = *text)
   {
+#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
+    mattr = *pmattr++;
+#endif
     switch (ch)
     {
-    case KEY_ESC:
-      ch = '*';
+      case KEY_ESC:
+#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
+       if (*movie_attrs)
+	       outc('*');
+	   else
+#endif
+	     outs("\033[1;36m*\033[m");
+         //ch = '*';
+      break;
+      default:
+		outc(ch);
+#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
+		if (mattr != *pmattr){
+		    if (*pmattr){
+				prints("\033[1;3%dm", 8 - ((mattr-1) % 7+1) );
+		    } else {
+				outs("\033[m");
+		    }
+		}
+#endif
+    }
+
+    if (++text >= tail){
+      if (is_zhc_low(start, text - start))
+          outc(*text);
       break;
     }
-    outc(ch);
-
-    if (++text >= tail)
-      break;
   }
 }
 
@@ -1693,6 +1725,118 @@ ve_subject(row, topic, dft)
 
   return vget(row, 0, "標題：", title, TTLEN + 1, GCARRY);
 }
+
+#if defined(M3_USE_PMORE) && defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
+void syn_pmore_render(char *os, int len, char *buf)
+{
+    // XXX buf should be same length as s.
+    char *s = (char *)mf_movieFrameHeader((unsigned char*)os, (unsigned char*)os + len);
+    char attr = 1;
+    char iname = 0;
+    char prefix = 0;
+
+    memset(buf, 0, len);
+    if (!len || !s) return;
+
+    // render: frame header
+    memset(buf, attr++, (s - os));
+    len -= s - os;
+    buf += s - os;
+
+    while (len-- > 0)
+    {
+	switch (*s++)
+	{
+	    case 'P':
+	    case 'E':
+		*buf++ = attr++;
+		return;
+
+	    case 'S':
+		*buf++ = attr++;
+		continue;
+
+	    case '0': case '1': case '2': case '3':
+	    case '4': case '5': case '6': case '7':
+	    case '8': case '9': case '.': 
+		*buf++ = attr;
+		while (len > 0 && isascii(*s) && 
+			(isalnum(*s) || *s == '.') )
+		{
+		    *buf++ = attr;
+		    len--; s++;
+		}
+		return;
+
+	    case '#':
+		*buf++ = attr++;
+		while (len > 0)
+		{
+		    *buf++ = attr;
+		    if (*s == '#') attr++;
+		    len--; s++;
+		}
+		return;
+
+	    case ':':
+		*buf++ = attr;
+		while (len > 0 && isascii(*s) && 
+			(isalnum(*s) || *s == ':') )
+		{
+		    *buf++ = attr;
+		    len--;
+		    if (*s++ == ':') break;
+		}
+		attr++;
+		continue;
+
+	    case 'I':
+	    case 'G':
+		iname = 0;
+		*buf++ = attr++;
+		prefix = 1;
+		while (len > 0 && 
+			( (isascii(*s) && isalnum(*s)) || 
+			  strchr("+-,:lpf", *s)) )
+		{
+		    if (prefix)
+		    {
+			if (!strchr(":lpf", *s))
+			    break;
+			prefix = 0;
+		    }
+		    *buf++ = attr;
+		    if (*s == ',') 
+		    {
+			attr++;
+			prefix = 1;
+		    }
+		    s++; len--;
+		}
+		attr++;
+		return; 
+
+	    case 'K':
+		*buf++ = attr;
+		if (*s != '#')
+		    return;
+		*buf++ = attr; s++; len--; // #
+		while (len >0)
+		{
+		    *buf++ = attr;
+		    len--;
+		    if (*s++ == '#') break;
+		}
+		attr++;
+		continue;
+
+
+	    default: // unknown
+		return;
+	}
+    }
+}
+#endif
 
 /*推文修改*/
 int 
@@ -1958,7 +2102,7 @@ vedit(fpath, ve_op)
 	  if (mode & VE_ANSI)
 	    outx(tmp->data);
 	  else if (tmp->len > margin)
-	    ve_outs(tmp->data + margin);
+	    ve_outs(tmp->data + margin - (is_zhc_low(tmp->data, margin) ? 1 : 0));
 	  tmp = tmp->next;
 	}
 	else
@@ -2051,7 +2195,6 @@ ve_key:
       case KEY_BKSP:		/* backspace */
 
 	/* Thor: 在 ANSI 編輯模式下, 不可以按倒退, 不然會很可怕.... */
-
 	if (mode & VE_ANSI)
 	{	
 #if 0

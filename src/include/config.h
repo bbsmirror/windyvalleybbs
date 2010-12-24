@@ -72,6 +72,10 @@
 #define RSSreader      /* cache.090628: RSS reader                   */
 #define M3_USE_PFTERM  /* cache.091003: piaip's flat terminal system */
 
+#ifdef M3_USE_PMORE
+#define ENABLE_PMORE_ASCII_MOVIE_SYNTAX
+#endif
+
   /* ------------------------------------------------- */
   /* 組態規劃˙系統追蹤                                */
   /* ------------------------------------------------- */
