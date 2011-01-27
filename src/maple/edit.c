@@ -1646,41 +1646,35 @@ ve_filer(fpath, ve_op)
 /* 螢幕處理：輔助訊息、顯示編輯內容			 */
 /* ----------------------------------------------------- */
 /* FinFunnel: ESC控制碼上色以讓使用者能夠辨認 * 和ESC。目前借ptt的code讓pmore語法上色 */
+#ifdef ENABLE_PMORE_ASCII_MOVIE_SYNTAX
 static void
 ve_outs(text)
   uschar *text;
 {
   int ch;
   uschar *tail, *start = text;
-#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
   char movie_attrs[VE_WIDTH+10] = {0};
   char *pmattr = movie_attrs, mattr = 0;
 
   syn_pmore_render((char*)text, strlen(text), movie_attrs);
   if (*movie_attrs)
 	  outs("\033[0;36m");
-#endif
 
   tail = text + SCR_WIDTH;
   while (ch = *text)
   {
-#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
     mattr = *pmattr++;
-#endif
     switch (ch)
     {
       case KEY_ESC:
-#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
        if (*movie_attrs)
 	       outc('*');
 	   else
-#endif
 	     outs("\033[1;36m*\033[m");
          //ch = '*';
       break;
       default:
 		outc(ch);
-#if defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
 		if (mattr != *pmattr){
 		    if (*pmattr){
 				prints("\033[1;3%dm", 8 - ((mattr-1) % 7+1) );
@@ -1688,17 +1682,37 @@ ve_outs(text)
 				outs("\033[m");
 		    }
 		}
-#endif
     }
 
     if (++text >= tail){
-      if (is_zhc_low(start, text - start))
-          outc(*text);
       break;
     }
   }
 }
+#else
+static void
+ve_outs(text)
+  uschar *text;
+{
+  int ch;
+  uschar *tail;
 
+  tail = text + SCR_WIDTH;
+  while (ch = *text)
+  {
+    switch (ch)
+    {
+      case KEY_ESC:
+         ch = '*';
+		 break;
+    }
+	outc(ch);
+
+    if (++text >= tail)
+      break;
+  }
+}
+#endif
 
 int
 ve_subject(row, topic, dft)
@@ -1726,7 +1740,7 @@ ve_subject(row, topic, dft)
   return vget(row, 0, "標題：", title, TTLEN + 1, GCARRY);
 }
 
-#if defined(M3_USE_PMORE) && defined(ENABLE_PMORE_ASCII_MOVIE_SYNTAX)
+#ifdef ENABLE_PMORE_ASCII_MOVIE_SYNTAX
 void syn_pmore_render(char *os, int len, char *buf)
 {
     // XXX buf should be same length as s.
@@ -2119,7 +2133,7 @@ vedit(fpath, ve_op)
 	  if (mode & VE_ANSI)
 	    outx(tmp->data);
 	  else if (tmp->len > margin)
-	    ve_outs(tmp->data + margin - (is_zhc_low(tmp->data, margin) ? 1 : 0));
+	    ve_outs(tmp->data + margin);
 	  tmp = tmp->next;
 	}
 	else
