@@ -758,7 +758,7 @@ input_tools()   /* itoc.000319: 符號輸入工具 */
       "（）｛｝〔〕【】《》"
       "〈〉「」『』︻︼︽︾"
       "︵︶︷︸︹︺﹁﹂﹃﹄"
-    }, 
+    },
 
     {	/* 2.線條表框 */
       "╓╥╖╙╨╜─│═∥"
@@ -766,7 +766,7 @@ input_tools()   /* itoc.000319: 符號輸入工具 */
       "╔╦╗╠╬╣╚╩╝﹏\"
       "╒╕╞╡╘╛╭╮╰╯"
       "▁▔▏▕╱╲←→↑↓"
-    }, 
+    },
 
     {	/* 3.數學符號 */
       "＋－×÷±＝＜＞≦≧"
@@ -774,7 +774,7 @@ input_tools()   /* itoc.000319: 符號輸入工具 */
       "ΣΠ∫∮∠⊥∟⊿Δ°"
       "＃＆＊※＠＄￥￠￡％"
       "℃℉㎜㎝㎞㎡㎎㎏㏄§"
-    }, 
+    },
 
     {	/* 4.圖案數字 */
       "○●△▲◎☆◇◆□■"
@@ -782,7 +782,7 @@ input_tools()   /* itoc.000319: 符號輸入工具 */
       "０１２３４５６７８９"
       "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ"
       "けげこごさざしじすず"
-    }, 
+    },
 
     {	/* 5.希臘字母 */
       "ΑΒΓΔΕΖΗΘΙΚ"
@@ -790,7 +790,7 @@ input_tools()   /* itoc.000319: 符號輸入工具 */
       "ΦΧΨΩα\βγδεζ"
       "ηθικλμνξοπ"
       "ρστυφχψω∕﹨"
-    }, 
+    },
 
     {	/* 6.注音標點 */
       "ㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎ"
@@ -1185,7 +1185,7 @@ ve_quote(this)
 #else
   if (!(cuser.ufo & UFO_NOSIGN))					/* itoc.000320: 不使用簽名檔 */
 #endif
-  {    
+  {
     if (cuser.ufo & UFO_SHOWSIGN)	/* itoc.000319: 顯示簽名檔的內容 */
       show_sign();
 
@@ -1278,7 +1278,7 @@ quote_check()
 
   /* lavender: 20031218: 小站就算了吧,大家方便點 :) */
   /* 文章行數要多於引言行數四分之一 */
-  /*if ((quot_line >> 2) <= post_line)   
+  /*if ((quot_line >> 2) <= post_line)
     return 0;
 
   if (HAS_PERM(PERM_ALLADMIN))
@@ -1301,7 +1301,7 @@ int wordsnum;		/* itoc.010408: 算文章字數 */
 static int
 words_check()
 {
-  textline *p; 
+  textline *p;
   uschar *str, *pend;
   int phonetic;		/* 注音文數目 */
 
@@ -1338,7 +1338,7 @@ words_check()
 static void
 words_check()
 {
-  textline *p; 
+  textline *p;
   char *str;
 
   wordsnum = 0;
@@ -1376,7 +1376,7 @@ ve_header(fp)
     fprintf(fp, "%s %s (%s)\n", str_author1, cuser.userid, cuser.username);
   }
   else
-  {   
+  {
 #ifdef HAVE_ANONYMOUS
     if (currbattr & BRD_ANONYMOUS && !(curredit & EDIT_RESTRICT))
     {
@@ -1427,7 +1427,7 @@ ve_header(fp)
 #endif
 
     {
-      fprintf(fp, "%s %s (%s) %s %s\n", 
+      fprintf(fp, "%s %s (%s) %s %s\n",
 	str_author1, cuser.userid, cuser.username,
 	curredit & EDIT_OUTGO ? str_post1 : str_post2, currboard);
     }
@@ -1445,13 +1445,13 @@ ve_banner(fp, modify)		/* 加上來源等訊息 */
 
   if (!modify)
   {
-    fprintf(fp, EDIT_BANNER, 
+    fprintf(fp, EDIT_BANNER,
 //#ifdef HAVE_ANONYMOUS
-//      (curredit & EDIT_ANONYMOUS) ? STR_ANONYMOUS : 
+//      (curredit & EDIT_ANONYMOUS) ? STR_ANONYMOUS :
 //#endif
-//      cuser.userid, 
+//      cuser.userid,
 #ifdef HAVE_ANONYMOUS
-      (curredit & EDIT_ANONYMOUS) ? "不告訴你= =+" : 
+      (curredit & EDIT_ANONYMOUS) ? "不告訴你= =+" :
 #endif
       (cuser.ufo & UFO_HIDDEN ? MYHOSTNAME : fromhost));
   }
@@ -1579,7 +1579,7 @@ ve_filer(fpath, ve_op)
 
   default:
     if (ve_op < 0)		 /* itoc.010301: 不能儲存 */
-      return VE_FOOTER;    
+      return VE_FOOTER;
   }
 
   if (!ans)
@@ -1660,7 +1660,7 @@ ve_outs(text)
   if (*movie_attrs)
 	  outs("\033[0;36m");
 #endif
-  
+
   tail = text + SCR_WIDTH;
   while (ch = *text)
   {
@@ -1758,9 +1758,9 @@ void syn_pmore_render(char *os, int len, char *buf)
 
 	    case '0': case '1': case '2': case '3':
 	    case '4': case '5': case '6': case '7':
-	    case '8': case '9': case '.': 
+	    case '8': case '9': case '.':
 		*buf++ = attr;
-		while (len > 0 && isascii(*s) && 
+		while (len > 0 && isascii(*s) &&
 			(isalnum(*s) || *s == '.') )
 		{
 		    *buf++ = attr;
@@ -1780,7 +1780,7 @@ void syn_pmore_render(char *os, int len, char *buf)
 
 	    case ':':
 		*buf++ = attr;
-		while (len > 0 && isascii(*s) && 
+		while (len > 0 && isascii(*s) &&
 			(isalnum(*s) || *s == ':') )
 		{
 		    *buf++ = attr;
@@ -1795,8 +1795,8 @@ void syn_pmore_render(char *os, int len, char *buf)
 		iname = 0;
 		*buf++ = attr++;
 		prefix = 1;
-		while (len > 0 && 
-			( (isascii(*s) && isalnum(*s)) || 
+		while (len > 0 &&
+			( (isascii(*s) && isalnum(*s)) ||
 			  strchr("+-,:lpf", *s)) )
 		{
 		    if (prefix)
@@ -1806,7 +1806,7 @@ void syn_pmore_render(char *os, int len, char *buf)
 			prefix = 0;
 		    }
 		    *buf++ = attr;
-		    if (*s == ',') 
+		    if (*s == ',')
 		    {
 			attr++;
 			prefix = 1;
@@ -1814,7 +1814,7 @@ void syn_pmore_render(char *os, int len, char *buf)
 		    s++; len--;
 		}
 		attr++;
-		return; 
+		return;
 
 	    case 'K':
 		*buf++ = attr;
@@ -1839,17 +1839,23 @@ void syn_pmore_render(char *os, int len, char *buf)
 #endif
 
 /*推文修改*/
-int 
-sedit(fpath) 
+int
+sedit(fpath,hdr)
 char *fpath;
+HDR *hdr;
 {
 
 textline *vln, *tmp , *p , *v;
 char uid[IDLEN+1];
-char head[25],reason[80],cmp[80];
+char head[25],reason[80],cmp[80],log[ANSILINELEN];
 char *cur , *msg;
 int cc,cut, len=52;
+
+struct tm *ptime;
+time_t now;
+
 FILE *fp;
+char *fdlog = "run/delscore.log";
 
 /*讀檔*/
 
@@ -1867,7 +1873,7 @@ if (*fpath)
 
     ve_abort(4);
 	abort_bbs();
-    
+
     }
     close(cc);
   }
@@ -1887,36 +1893,47 @@ if (vln = tmp->next)
 
  while(vln->next)
  {
-   
+
    vln = vln->next;
  }
- 
- 
-  cc=0; 
+
+
+  cc=0;
 /*  找推文  */
  while(vln)
  {
+
    sscanf(vln->data,"%s",head);
    if(!strcmp(head,"\033[1;36m"))
-   {   
+   {
         cur=vln->data+sizeof(char)*7;
         sscanf(cur,"%s",uid);
-        if(!strcmp(cuser.userid,uid))  
+        if(!strcmp(cuser.userid,uid))
         {
-          cur = cur + sizeof(char)*(IDLEN+16);  
+
+          cur = cur + sizeof(char)*(IDLEN+16);
           strncpy(reason,cur,len);
-                                  
+
           cut=len;
 	  while(reason[cut-1]==' ' && cut>0)
 		  cut--;
 	  reason[cut]='\0';
-        
+
 	  strcpy(cmp,reason);
-         
-	 
-          if (!vget(b_lines, 0, "修改推文：", reason, len, GCARRY)) 
+
+
+          if (!vget(b_lines, 0, "修改推文：", reason, len, GCARRY))
             cc=1;
-	  
+
+          if(!cc)
+          { //記錄修改前的內容
+                       time(&now);
+                       ptime = localtime(&now);
+                       sprintf(log,"[MODIFY][BOARDNAME: %s ][XNAME: %s ][BY %s %02d:%02d ]\n", currboard, hdr->xname, cuser.userid,ptime->tm_hour,ptime->tm_min);
+                       f_cat(fdlog,log);
+                       f_cat(fdlog,vln->data);
+          }
+
 	  if(strcmp(cmp,reason))
 	  {
                 time_t now;
@@ -1927,21 +1944,21 @@ if (vln = tmp->next)
 
                 sprintf(cur,"%-*s%02d/%02d/%02d",len,reason,
 		ptime->tm_year % 100,ptime->tm_mon+1,ptime->tm_mday);
-                          
-                          
+
+
           }else
           {
                cc=1;
           }
-            
-             
+
+
 
           break;
-        }else 
+        }else
         {
            vln = vln->prev;
            continue;
-        }        
+        }
 
    }else if(!strcmp(head,"\033[1;32m□"))
    {
@@ -1953,7 +1970,7 @@ if (vln = tmp->next)
    {
       vln = vln->prev;
       continue;
-   }  
+   }
 
  }
 
@@ -2152,7 +2169,7 @@ vedit(fpath, ve_op)
 #ifdef EVERY_BIFF
 	  mode & VE_BIFF ? "郵差來了" : "編輯文章",
 #else
-	  "編輯文章", 
+	  "編輯文章",
 #endif
 	  mode & VE_INSERT ? "插入" : "取代",
 	  mode & VE_ANSI ? "ANSI" : "一般",
@@ -2196,16 +2213,16 @@ ve_key:
 
 	/* Thor: 在 ANSI 編輯模式下, 不可以按倒退, 不然會很可怕.... */
 	if (mode & VE_ANSI)
-	{	
+	{
 #if 0
-	  goto ve_key;	/* 按後退鍵就當沒按 */	  
+	  goto ve_key;	/* 按後退鍵就當沒按 */
 #endif
 
 	  /* itoc.010322: ANSI 編輯時按後退鍵回到非 ANSI 模式 */
   	  mode ^= VE_ANSI;
 	  clear();
 	  ve_mode = mode | VE_REDRAW;
-	  continue;	  
+	  continue;
 	}
 
 	if (col)
@@ -2485,7 +2502,7 @@ ve_key:
         {
           /* qazq.031117: 多樣化顯示使用者資料 */
           char *text = "snlpgmtub";
-          char datebuf[3][3], i, genbuf[6];       
+          char datebuf[3][3], i, genbuf[6];
           char *msg[] = {"10",
                          "1  ＩＤ      (**s)", "2  暱稱      (**n)",
                          "3  上站次數  (**l)", "4  發文次數  (**p)",
@@ -2493,12 +2510,12 @@ ve_key:
                          "7  現在時刻  (**t)", "8  線上人數  (**u)",
                          "9  倒數計時  (**T)", "0  取消",
                          NULL};
-                                                                                
+
           cc = pans(5, 20, "顯示使用者資料", msg);
           if (cc > '0')
           {
             if (cc != '9')
-              { 
+              {
                 ve_char(KEY_ESC);
                 ve_char('*');
                 ve_char(text[cc - '1']);
@@ -2520,18 +2537,18 @@ ve_key:
                   break;
                 sprintf(genbuf, "%02d%02d%02d", atoi(datebuf[0]), atoi(datebuf[1]),
                 atoi(datebuf[2]));
-                                                                                
+
                 ve_char(KEY_ESC);
                 ve_char('*');
                 ve_char('T');
-                                                                                
+
                 for (i = 0; i < 6; i++)
                   ve_char(genbuf[i]);
-              } 
+              }
           }
         }
         break;
-        
+
 /*
 	cc = vans("顯示使用者資料(1)id (2)暱稱？");
 	if (cc >= '1' && cc <= '2')

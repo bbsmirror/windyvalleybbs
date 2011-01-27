@@ -1118,8 +1118,8 @@ main(argc, argv)
 #endif
 
 #ifdef HAVE_SCORE
-    sprintf(title, "%s刪推文紀錄",date);
-    keeplog("run/delscore.log",BN_DELETED,title, 2);
+    sprintf(title, "%s刪改推文紀錄",date);
+    keeplog("run/delscore.log",BN_MODIFY,title, 2);
 #endif
 
     system("grep OVER " BMTA_LOGFILE " | cut -f2 | cut -d' ' -f2- | sort | uniq -c > run/over.log");

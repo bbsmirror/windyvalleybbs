@@ -79,7 +79,7 @@ void ve_header(FILE *fp);
 void ve_banner(FILE *fp, int modify);
 int ve_subject(int row, char *topic, char *dft);
 int vedit(char *fpath, int ve_op);
-int sedit(char *fpath);
+int sedit(char *fpath,HDR *hdr);
 
 /* favorite.c */
 void mf_fpath(char *fpath, char *userid, char *fname);

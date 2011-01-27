@@ -2618,7 +2618,7 @@ static int
 post_delete(xo)
   XO *xo;
 {
-  int pos, cur, by_BM, userno;
+  int pos, cur, by_BM;
   HDR *hdr;
   char buf[80];
 
@@ -2651,7 +2651,7 @@ post_delete(xo)
     BRD *oldbrd, newbrd;
     oldbrd = bshm->bcache + currbno;
     memcpy(&newbrd, oldbrd, sizeof(BRD));
-    char ans;
+//    char ans;
 #ifdef BAD_POST
     if(bbstate & STAT_BOARD && (newbrd.battr & BRD_EVALUATE))
     {
@@ -2909,8 +2909,8 @@ post_editscore(xo)
 {
 char fpath[64], genbuf[64];
 
-  char folder[64];
-  HDR xpost;
+ // char folder[64];
+ // HDR xpost;
 
   HDR *hdr;
 
@@ -2929,7 +2929,7 @@ char fpath[64], genbuf[64];
   hdr_fpath(genbuf, xo->dir, hdr);
   sprintf(fpath, "tmp/edit.%s.%ld", cuser.userid, time(NULL));
 
-  brd_fpath(folder, BN_MODIFY, fn_dir);
+  //brd_fpath(folder, BN_MODIFY, fn_dir); //不用再Modify板另外發篇新文
 
   f_cp(genbuf, fpath, O_APPEND);                /* do Copy */
   stat(fpath, &st);        oldsz = st.st_size;
@@ -2954,13 +2954,13 @@ if(!HAS_PERM(PERM_SYSOP))
 
 }
 
-            hdr_stamp(folder, HDR_COPY | 'A', &xpost, fpath);
-            strcpy(xpost.owner, hdr->owner);
-            strcpy(xpost.nick, hdr->nick);
-            strcpy(xpost.title, hdr->title);
+         //   hdr_stamp(folder, HDR_COPY | 'A', &xpost, fpath);
+         //   strcpy(xpost.owner, hdr->owner);
+         //   strcpy(xpost.nick, hdr->nick);
+         //   strcpy(xpost.title, hdr->title);
 
 
-      if(sedit(fpath))/*需要用到edit.c裡的結構和函式*/
+      if(sedit(fpath,hdr))/*需要用到edit.c裡的結構和函式*/
       {
               return XO_HEAD;
       }
@@ -3023,8 +3023,8 @@ if(!HAS_PERM(PERM_SYSOP))
            btime_update(currbno);
 
 
-           rec_bot(folder, &xpost, sizeof(HDR));
-           btime_update(brd_bno(BN_MODIFY));
+          // rec_bot(folder, &xpost, sizeof(HDR));
+          // btime_update(brd_bno(BN_MODIFY));
 
    if (reset)
     {
@@ -4106,13 +4106,15 @@ post_delscore(xo)
     			/*推文格式: 0 - 6 : \033[1;36m
 		   	            7 - 19 : ID
 		    		    20 - 27: ' ' + \033[1;3(1,2,3)m */
-	  	   if(!fpL) {
-	    	       sprintf(log,"[BOARDNAME: %s ][XNAME: %s ]  %s\n", currboard, hdr->xname, cuser.userid);
-                       f_cat(fdlog,log);   // 每次刪除log只寫入一次
-                       fpL = fopen(fdlog, "a");
-                   }
+	  	   if(!fpL)
+	  	   {
+                sprintf(log,"[DELETE][BOARDNAME: %s ][XNAME: %s ][BY %s %02d:%02d ]\n", currboard, hdr->xname, cuser.userid,ptime->tm_hour,ptime->tm_min);
+                f_cat(fdlog,log);   // 每次刪除log只寫入一次
+                fpL = fopen(fdlog, "a");
+           }
 
 		   fputs(buf, fpL);
+
                    sprintf(buf, "\033[1;36m%13s\033[m \033[1;33m→\033[m："   /*此格式暫先不要更動*/
                      "%-51s %02d/%02d/%02d\n",
                    cuser.userid, "此評論已被刪除",
@@ -4189,7 +4191,7 @@ static int
 post_help(xo)
   XO *xo;
 {
-    
+
   xo_help("post");
  /* return post_head(xo); */
   return XO_HEAD;		/* itoc.001029: 與 xpost_help 共用 */
