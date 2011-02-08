@@ -1865,9 +1865,6 @@ char head[25],reason[80],cmp[80],log[ANSILINELEN];
 char *cur , *msg;
 int cc,cut, len=52;
 
-struct tm *ptime;
-time_t now;
-
 FILE *fp;
 char *fdlog = "run/delscore.log";
 
@@ -1940,21 +1937,21 @@ if (vln = tmp->next)
             cc=1;
 
           if(!cc)
-          { //記錄修改前的內容
-                       time(&now);
-                       ptime = localtime(&now);
-                       sprintf(log,"[MODIFY][BOARDNAME: %s ][XNAME: %s ][BY %s %02d:%02d ]\n", currboard, hdr->xname, cuser.userid,ptime->tm_hour,ptime->tm_min);
-                       f_cat(fdlog,log);
-                       f_cat(fdlog,vln->data);
+          {
           }
 
 	  if(strcmp(cmp,reason))
 	  {
                 time_t now;
-		struct tm *ptime;
+                struct tm *ptime;
 
-		time(&now);
-		ptime = localtime(&now);
+                time(&now);
+                ptime = localtime(&now);
+
+                //記錄修改前的內容
+                sprintf(log,"[MODIFY][BOARDNAME: %s ][XNAME: %s ][BY %s %02d:%02d ]\n", currboard, hdr->xname, cuser.userid,ptime->tm_hour,ptime->tm_min);
+                f_cat(fdlog,log);
+                f_cat(fdlog,vln->data);
 
                 sprintf(cur,"%-*s%02d/%02d/%02d",len,reason,
 		ptime->tm_year % 100,ptime->tm_mon+1,ptime->tm_mday);
