@@ -98,19 +98,23 @@ refusepal_cache(hdr, board)
       close(fd);
     }
   }
-  else
+  else{
     RefusePal_kill(board, hdr);
+  }
 }
-
+/* FinFunnel.20110219: 原本直接從xo_pool取hdr的方式，每頁的第一篇文章hdr內容
+   經過xover後似乎會被動到導致找不到文章編號，暫時採用複製一份hdr的方式 */
 static int
 XoBM_Refuse_pal(xo)
   XO *xo;
 {
   char fpath[64];
-  HDR *hdr;
+  HDR *hdr, hdr_tmp;
   XO *xt;
 
   hdr = (HDR *) xo_pool + (xo->pos - xo->top);
+  memcpy(&hdr_tmp, hdr, sizeof(hdr_tmp));
+  hdr = &hdr_tmp;
 
   if (!(hdr->xmode & POST_RESTRICT))
     return XO_NONE;
