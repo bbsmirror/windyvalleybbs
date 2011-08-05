@@ -1198,7 +1198,7 @@ post_attr(hdr)
 
 #ifdef HAVE_REFUSEMARK
   if (mode & POST_RESTRICT)
-    attr |= 'X';
+    attr |= (RefusePal_belong(currboard, hdr)) ? 'O' : 'X';
   else
 #endif
 

@@ -750,6 +750,46 @@ pal_cite(xo)
 }
 #endif
 
+#ifdef HAVE_LIST
+static int
+pal_store(xo)
+  XO *xo;
+{
+	int fd, sel, num;
+	char fpath[64], buf[32], *dir;
+	PAL pals[PAL_MAX], *tmp_pal;
+	
+	num = 0;
+	sel = vans("要存入特別名單(1-5)？[Q]");
+	if (sel >= '1' && sel <= '5'){
+		sprintf(buf, "%s.%c", FN_LIST, sel);
+		usr_fpath(fpath, cuser.userid, buf);
+	}
+	else
+		return XO_FOOT;
+		
+	dir = xo->dir; // current list?
+	if (!strcmp(dir, fpath)){
+	    vmsg("不能存入同一份名單");
+		return XO_FOOT;
+	}
+	
+	sel = vans("是否確定？[y/N]");
+	if (sel != 'y')
+		return XO_FOOT;
+	
+	if ((fd = open(dir, O_RDONLY)) < 0)
+			return XO_FOOT;
+		while (tmp_pal = (PAL*)mread(fd, sizeof(PAL)))
+			pals[num++] = *tmp_pal;
+		close(fd);
+	
+	unlink(fpath);
+	rec_add(fpath, pals, sizeof(PAL) * num);
+	
+	return XO_FOOT;
+}
+#endif
 
 static int
 pal_sort(xo)
@@ -827,6 +867,7 @@ KeyFunc pal_cb[] =
 
 #if (defined(HAVE_MODERATED_BOARD) || defined(HAVE_LIST))
   'f', pal_cite,
+  'S', pal_store,
 #endif
 
   'h', pal_help
@@ -902,3 +943,4 @@ t_list()
   return 0;
 }
 #endif
+
